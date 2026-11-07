@@ -5,6 +5,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Exact-host checks: substring tests like hostname.includes('apple.com') also
 // match apple.com.attacker.example or notapple.com.
 const IS_APPLE_MUSIC = location.protocol === 'https:' && location.hostname === 'music.apple.com';
+const IS_LOCAL = location.protocol === 'file:';
 const IS_APPLE = location.protocol === 'https:' &&
     (location.hostname === 'apple.com' || location.hostname.endsWith('.apple.com'));
 
@@ -78,8 +79,9 @@ contextBridge.exposeInMainWorld('kappleReady', () => ipcRenderer.send('app:ui-re
 
 // The bridge reaches prefs, files and the engine; expose it only to the page the
 // injected bundles run on, never to whatever origin the window navigates to.
-if (IS_APPLE_MUSIC) {
+if (IS_APPLE_MUSIC || IS_LOCAL) {
     const bridge = {
+    api:            (method, path, body) => ipcRenderer.invoke('engine:request', { method, path, body }),
     isDev: !!process.defaultApp, // true when running via `electron .`, false in packaged app
     platform: process.platform,
     debug: process.argv.includes('--kapple-debug=1') || process.argv.includes('--adam-debug=1'), // app was started from a terminal (see DEBUG_OUTPUT in main.mjs)

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kapple Music</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Window Header / Drag bar -->
+    <header id="header">
+      <div id="header-drag"></div>
+      <div id="header-actions">
+        <span id="account-status"></span>
+      </div>
+    </header>
+
+    <!-- Sign In Sheet (Single Login) -->
+    <div id="auth-view" class="view">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <svg viewBox="0 0 170 170" width="60" height="60" fill="currentColor">
+            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.64-7.85-11.87-14.42-6.53-10.13-11.58-21.57-15.15-34.33-3.57-12.75-5.36-24.63-5.36-35.63 0-14.59 3.52-26.68 10.56-36.27 7.04-9.59 16.03-14.49 26.97-14.7 4.79 0 10.23 1.25 16.32 3.75 6.09 2.5 10.19 3.75 12.3 3.75 1.74 0 5.63-1.19 11.66-3.57 6.03-2.38 11.43-3.47 16.19-3.26 12.18.65 21.99 4.9 29.43 12.75-10.66 6.53-15.88 15.45-15.66 26.77.22 8.92 3.69 16.32 10.42 22.2 6.73 5.88 14.58 9.14 23.55 9.79-2.17 6.74-4.89 13.82-8.16 21.23zm-32.96-104.9c0-6.74 2.45-13.11 7.35-19.11 4.9-6 10.99-9.84 18.28-11.52.22 1.09.33 2.07.33 2.94 0 6.64-2.58 13.06-7.75 19.26-5.17 6.2-11.27 9.87-18.3 11.02-.11-.87-.22-1.74-.22-2.59z"/>
+          </svg>
+        </div>
+        <h2>Sign in to Apple Music</h2>
+        <p class="auth-desc">Enter your Apple ID to stream bit-perfect Lossless (ALAC) audio directly on Linux.</p>
+
+        <form id="auth-form">
+          <div class="field">
+            <input type="email" id="auth-email" placeholder="Apple ID" required autocomplete="username">
+          </div>
+          <div class="field">
+            <input type="password" id="auth-password" placeholder="Password" required autocomplete="current-password">
+          </div>
+          <div class="auth-check">
+            <label><input type="checkbox" id="auth-remember" checked> Keep me signed in</label>
+          </div>
+          <button type="submit" id="auth-submit" class="btn primary">Sign In</button>
+        </form>
+
+        <div id="auth-2fa" class="hidden">
+          <p class="auth-2fa-note">Enter the 6-digit verification code sent to your Apple devices:</p>
+          <div class="field">
+            <input type="text" id="auth-code" maxlength="6" placeholder="123456" inputmode="numeric">
+          </div>
+          <button type="button" id="auth-code-submit" class="btn primary">Verify Code</button>
+        </div>
+
+        <div id="auth-error" class="error-msg"></div>
+      </div>
+    </div>
+
+    <!-- Main Native App View -->
+    <div id="main-view" class="view hidden">
+      <!-- Left Sidebar Navigation -->
+      <aside id="sidebar">
+        <div class="brand">
+          <span class="brand-icon"></span>
+          <span class="brand-name">Kapple Music</span>
+        </div>
+        <nav class="nav-list">
+          <button class="nav-item active" data-tab="home">
+            <span class="icon">🏠</span> Listen Now
+          </button>
+          <button class="nav-item" data-tab="search">
+            <span class="icon">🔍</span> Search
+          </button>
+          <button class="nav-item" data-tab="playlists">
+            <span class="icon">📑</span> Playlists
+          </button>
+          <button class="nav-item" data-tab="settings">
+            <span class="icon">⚙️</span> Settings
+          </button>
+        </nav>
+      </aside>
+
+      <!-- Main Content Stage -->
+      <main id="content">
+        <!-- 1. Home / Listen Now View -->
+        <section id="tab-home" class="tab-pane">
+          <h1 class="pane-title">Listen Now</h1>
+          <div class="section-group">
+            <h2 class="section-title">Recently Played</h2>
+            <div id="recently-played-grid" class="cards-grid"></div>
+          </div>
+          <div class="section-group">
+            <h2 class="section-title">Heavy Rotation</h2>
+            <div id="heavy-rotation-grid" class="cards-grid"></div>
+          </div>
+        </section>
+
+        <!-- 2. Search View -->
+        <section id="tab-search" class="tab-pane hidden">
+          <div class="search-header">
+            <input type="search" id="search-bar" placeholder="Search songs, albums, artists...">
+          </div>
+          <div id="search-results">
+            <div id="search-songs-section" class="hidden">
+              <h2 class="section-title">Songs</h2>
+              <table class="tracks-table">
+                <tbody id="search-songs-body"></tbody>
+              </table>
+            </div>
+            <div id="search-albums-section" class="hidden">
+              <h2 class="section-title">Albums</h2>
+              <div id="search-albums-grid" class="cards-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Playlists View -->
+        <section id="tab-playlists" class="tab-pane hidden">
+          <h1 class="pane-title">Library Playlists</h1>
+          <div id="playlists-grid" class="cards-grid"></div>
+        </section>
+
+        <!-- 4. Detail View (Album or Playlist) -->
+        <section id="tab-detail" class="tab-pane hidden">
+          <button id="btn-detail-back" class="btn text-btn">← Back</button>
+          <div class="detail-header">
+            <img id="detail-artwork" class="detail-art" src="" alt="Artwork">
+            <div class="detail-info">
+              <div id="detail-badge" class="badge">PLAYLIST</div>
+              <h1 id="detail-title" class="detail-name"></h1>
+              <p id="detail-subtitle" class="detail-author"></p>
+              <div class="detail-actions">
+                <button id="btn-detail-play" class="btn primary play-all-btn">▶ Play</button>
+              </div>
+            </div>
+          </div>
+          <table class="tracks-table">
+            <thead>
+              <tr>
+                <th style="width: 40px">#</th>
+                <th>Title</th>
+                <th>Artist</th>
+                <th style="width: 60px; text-align: right">Time</th>
+              </tr>
+            </thead>
+            <tbody id="detail-tracks-body"></tbody>
+          </table>
+        </section>
+
+        <!-- 5. Settings View -->
+        <section id="tab-settings" class="tab-pane hidden">
+          <h1 class="pane-title">Settings</h1>
+          <div class="settings-card">
+            <h3>Audio Quality</h3>
+            <p class="settings-desc">Kapple Music plays bit-perfect ALAC via libvlc directly on your sound system.</p>
+            <div class="settings-row">
+              <label for="setting-quality">Streaming Quality</label>
+              <select id="setting-quality">
+                <option value="lossless">Lossless (ALAC up to 24-bit / 48 kHz)</option>
+                <option value="hi-res-lossless">Hi-Res Lossless (ALAC up to 24-bit / 192 kHz)</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-card">
+            <h3>Account</h3>
+            <div class="settings-row">
+              <span id="settings-user-email">Signed in</span>
+              <button id="btn-signout" class="btn danger">Sign Out</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Syllable/LRC Lyrics Drawer -->
+      <div id="lyrics-drawer" class="lyrics-drawer hidden">
+        <div class="lyrics-header">
+          <h3>Lyrics</h3>
+          <button id="btn-lyrics-close" class="close-btn">✕</button>
+        </div>
+        <div id="lyrics-scroll" class="lyrics-content">
+          <div id="lyrics-lines"></div>
+        </div>
+      </div>
+
+      <!-- Bottom Audio Player Bar -->
+      <footer id="player-bar">
+        <!-- Now Playing Meta -->
+        <div class="now-playing">
+          <img id="np-art" class="np-art" src="" alt="">
+          <div class="np-info">
+            <div id="np-title" class="np-title">Not Playing</div>
+            <div id="np-artist" class="np-artist">—</div>
+          </div>
+          <div id="np-badge" class="quality-badge hidden">LOSSLESS</div>
+        </div>
+
+        <!-- Controls & Scrubber -->
+        <div class="player-center">
+          <div class="transport">
+            <button id="btn-prev" class="icon-btn" title="Previous">⏮</button>
+            <button id="btn-play" class="icon-btn play-btn" title="Play/Pause">▶</button>
+            <button id="btn-next" class="icon-btn" title="Next">⏭</button>
+          </div>
+          <div class="scrubber">
+            <span id="pos-time" class="time-lbl">0:00</span>
+            <input type="range" id="seek-slider" min="0" max="100" value="0" step="0.1">
+            <span id="dur-time" class="time-lbl">0:00</span>
+          </div>
+        </div>
+
+        <!-- Right Utilities (Lyrics & Volume) -->
+        <div class="player-right">
+          <button id="btn-lyrics" class="icon-btn" title="Synced Lyrics">💬</button>
+          <div class="volume-box">
+            <span id="vol-icon" class="vol-icon">🔊</span>
+            <input type="range" id="vol-slider" min="0" max="100" value="100">
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

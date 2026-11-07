@@ -832,23 +832,10 @@ function createWindow() {
     });
 
     win.on('page-title-updated', (e) => e.preventDefault());
-    let initialLoadRetried = false;
-    const loadAppleMusic = () => win.loadURL('https://music.apple.com').catch(async (e) => {
-        if (!initialLoadRetried && e?.message?.includes('ERR_FAILED')) {
-            initialLoadRetried = true;
-            console.warn('[Kapple Music] Apple Music load hit a Chromium cache failure; clearing the session cache and retrying');
-            try {
-                await win.webContents.session.clearCache();
-                await win.loadURL('https://music.apple.com');
-                return;
-            } catch (retryError) {
-                console.error('[Kapple Music] Apple Music retry failed:', retryError.message);
-                return;
-            }
-        }
-        console.error('[Kapple Music] Apple Music load failed:', e.message);
+    const loadApp = () => win.loadFile(path.join(__dirname, 'app.html')).catch(e => {
+        console.error('[Kapple Music] Failed to load app.html:', e.message);
     });
-    loadAppleMusic();
+    loadApp();
 
     // KDE X11: set the blur atom before the window is mapped.
     // ready-to-show fires after Chromium's first paint but before win.show(),
@@ -1576,6 +1563,10 @@ function engineRequest(method, urlPath, body) {
     });
 }
 
+ipcMain.handle('engine:request', async (_, { method, path, body }) => {
+    return engineRequest(method, path, body);
+});
+
 ipcMain.on('app:auth-state', (_e, signedIn) => {
     const on = signedIn === true;
     if (on === _signedIn) return;
@@ -1609,7 +1600,8 @@ const _MINI_CHANNELS = new Set(['miniplayer:toggle', 'miniplayer:expand', 'minip
 function _senderAllowed(event, channel) {
     const wc = event.sender;
     if (win && !win.isDestroyed() && wc === win.webContents) {
-        return _httpsHost(event.senderFrame?.url) === 'music.apple.com';
+        const u = event.senderFrame?.url || '';
+        return _httpsHost(u) === 'music.apple.com' || u.startsWith('file:');
     }
     return _MINI_CHANNELS.has(channel) && miniWin && !miniWin.isDestroyed() && wc === miniWin.webContents;
 }

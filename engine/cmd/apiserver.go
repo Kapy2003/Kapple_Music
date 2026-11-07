@@ -771,6 +771,7 @@ func NewAPIServer(port int, cfg ServerConfig) *APIServer {
 	mux.HandleFunc("GET /api/v1/catalog/albums/{id}", cors(s.handleCatalogAlbum))
 	mux.HandleFunc("GET /api/v1/catalog/playlists/{id}", cors(s.handleCatalogPlaylist))
 	mux.HandleFunc("GET /api/v1/catalog/artists/{id}", cors(s.handleCatalogArtist))
+	mux.HandleFunc("GET /api/v1/catalog/search", cors(s.handleCatalogSearch))
 
 	// Personalised feeds (dormant: no bundled frontend uses them; see
 	// handlers_recommendations.go and docs/api.md).

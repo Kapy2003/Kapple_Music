@@ -104,6 +104,7 @@ test('_senderAllowed: main window on the Apple origin, mini player only for tran
     const ev = (sender, url) => ({ sender, senderFrame: { url } });
 
     assert.equal(ctx.f(ev(mainWc, 'https://music.apple.com/us'), 'store:write'), true);
+    assert.equal(ctx.f(ev(mainWc, 'file:///x/app.html'), 'store:write'), true);
     assert.equal(ctx.f(ev(mainWc, 'https://evil.example/'), 'store:write'), false, 'main window, wrong origin');
     assert.equal(ctx.f(ev(mainWc, 'https://music.apple.com.evil.example/'), 'store:write'), false);
     assert.equal(ctx.f(ev(mainWc, undefined), 'store:write'), false, 'no frame url');

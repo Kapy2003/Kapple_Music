@@ -1,6 +1,6 @@
 name: Release build
 
-# Builds the .run installer, the AppImage, and the Windows installer.
+# Builds the Linux .run installer and AppImage and publishes the release.
 # Triggers automatically when a version tag (v*) is pushed, or manually via workflow_dispatch.
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to attach the packages to (the draft is created if missing)
+        description: Release tag to attach the packages to
         required: false
         default: v1.0.0
 
@@ -73,59 +73,15 @@ jobs:
           f=$(ls electron/dist/Kapple-Music-*-x86_64.AppImage)
           scripts/repack-appimage.sh "$f" "$f.repacked"
           mv "$f.repacked" "$f"
-      - name: Attach to a draft release
+      - name: Publish release and upload packages
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            if [ -f "releases/${TAG}.md" ]; then
-              gh release create "$TAG" --draft --title "$TAG" --notes-file "releases/${TAG}.md"
-            else
-              gh release create "$TAG" --draft --title "$TAG" --generate-notes
-            fi
+            NOTES_ARG="--generate-notes"
+            [ -f "releases/${TAG}.md" ] && NOTES_ARG="--notes-file releases/${TAG}.md"
+            gh release create "$TAG" dist/kapple-music.run electron/dist/Kapple-Music-*-x86_64.AppImage --title "$TAG" $NOTES_ARG
+          else
+            gh release upload "$TAG" dist/kapple-music.run electron/dist/Kapple-Music-*-x86_64.AppImage --clobber
           fi
-          gh release upload "$TAG" dist/kapple-music.run electron/dist/Kapple-Music-*-x86_64.AppImage --clobber
-
-  package-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: false
-      - uses: msys2/setup-msys2@v2
-        id: msys2
-        with:
-          msystem: UCRT64
-          path-type: inherit
-          install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-make
-            mingw-w64-ucrt-x86_64-openssl
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: engine/go.mod
-          cache-dependency-path: engine/go.sum
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install VLC
-        run: choco install vlc --no-progress -y
-      - name: Build the installer
-        shell: pwsh
-        run: scripts\build-windows.ps1 -Msys "${{ steps.msys2.outputs.msys2-location }}\ucrt64\bin"
-      - name: Attach to a draft release
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.inputs.tag || github.ref_name }}
-        run: |
-          gh release view $env:TAG *> $null
-          if ($LASTEXITCODE -ne 0) {
-            if (Test-Path "releases/$($env:TAG).md") {
-              gh release create $env:TAG --draft --title $env:TAG --notes-file "releases/$($env:TAG).md"
-            } else {
-              gh release create $env:TAG --draft --title $env:TAG --generate-notes
-            }
-          }
-          gh release upload $env:TAG (Get-ChildItem electron\dist\kapple-music-setup-*.exe).FullName --clobber

@@ -1,7 +1,7 @@
 {
   "name": "kapple-music",
   "version": "1.0.0",
-  "description": "Kapple Music, an Apple Music desktop client for Linux and Windows",
+  "description": "Kapple Music, an Apple Music desktop client for Linux",
   "license": "MIT",
   "main": "main.mjs",
   "type": "module",
@@ -16,7 +16,6 @@
     "build:engine": "bash ../scripts/build-renderer.sh",
     "build:go": "bash ../scripts/build-engine.sh dist/resources -ldflags=\"-w -s\" -trimpath",
     "build:vlc": "bash ../scripts/bundle-vlc.sh",
-    "dist:win": "powershell -ExecutionPolicy Bypass -File ../scripts/build-windows.ps1",
     "lint": "eslint ."
   },
   "desktopName": "kapple-music.desktop",
@@ -113,37 +112,6 @@
         }
       ]
     },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "icon.ico",
-      "artifactName": "kapple-music-setup-${version}.${ext}",
-      "extraResources": [
-        {
-          "from": "dist/resources-win",
-          "to": "."
-        },
-        {
-          "from": "native/composition-backdrop.dll",
-          "to": "composition-backdrop.dll"
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Kapple Music",
-      "deleteAppDataOnUninstall": false
-    },
     "protocols": [
       {
         "name": "Kapple Music",
@@ -157,8 +125,5 @@
   "optionalDependencies": {
     "mpris-service": "^2.1.2",
     "x11": "^2.3.0"
-  },
-  "dependencies": {
-    "koffi": "3.3.4"
   }
 }

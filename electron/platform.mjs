@@ -57,18 +57,6 @@ export function discordIpcPaths(plat = process.platform, env = process.env) {
     return paths;
 }
 
-// pid listening on a TCP port from `netstat -ano` output (Windows).
-export function parseNetstatListeningPid(out, port) {
-    for (const line of String(out).split(/\r?\n/)) {
-        const f = line.trim().split(/\s+/);
-        // TCP  127.0.0.1:20025  0.0.0.0:0  LISTENING  1234
-        if (f.length >= 5 && f[0] === 'TCP' && f[3] === 'LISTENING' && f[1].endsWith(':' + port)) {
-            const pid = parseInt(f[4], 10);
-            if (pid > 0) return pid;
-        }
-    }
-    return 0;
-}
 
 // pid listening on a TCP port from `ss -tlnpH` output (Linux).
 export function parseSsListeningPid(out) {
@@ -83,8 +71,7 @@ function run(cmd, args, timeout) {
     });
 }
 
-export async function listeningPid(port, plat = process.platform) {
-    if (plat === 'win32') return parseNetstatListeningPid(await run('netstat', ['-ano', '-p', 'tcp'], 4000), port);
+export async function listeningPid(port) {
     return parseSsListeningPid(await run('ss', ['-tlnpH', `sport = :${port}`], 2000));
 }
 

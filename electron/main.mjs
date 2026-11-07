@@ -18,8 +18,7 @@ import os from 'os';
 import { isatty } from 'tty';
 import net from 'net';
 import crypto from 'crypto';
-import { hasSessionBus, mprisRetryDelay, IS_WIN, IS_LINUX, configRoot, engineFileName, engineLibEnv, discordIpcPaths, yamlStr, migrateLegacyConfig, migrateStoreKeys } from './platform.mjs';
-import { createWinIntegration, APP_USER_MODEL_ID } from './win-integration.mjs';
+import { hasSessionBus, mprisRetryDelay, IS_LINUX, configRoot, engineFileName, engineLibEnv, discordIpcPaths, yamlStr, migrateLegacyConfig, migrateStoreKeys } from './platform.mjs';
 import { parseLink, isLinkArg } from './deeplink.mjs';
 import { createLinkSchemeManager } from './link-schemes.mjs';
 import { resolveThemeMode } from './theme-mode.mjs';
@@ -30,11 +29,8 @@ import { parseByteRange } from './range.mjs';
 import { shouldShowOffline, offlineHash } from './load-failure.mjs';
 import { runCleanupThrottled, cleanupCache } from './config-cleanup.mjs';
 import { gnomeWallpaperPath } from './wallpaper.mjs';
-import { acrylicBackend, normalizeAcrylic, acrylicOverlayScript, ACRYLIC_DEFAULTS } from './acrylic.mjs';
 import https from 'https';
 import { autoAuthenticate } from './drm-autoauth.mjs';
-import { fetchFairPlayLibs } from './fairplay-fetch.mjs';
-import { setCompositionBackdrop, setNativeCaptionDrag, removeCompositionBackdrop } from './composition-backdrop.mjs';
 import { cleanBlur, cleanGlassOpacity, sidebarOpacityControl, artNavAlpha } from './src/engine/sidebar-glass.js';
 
 const require = createRequire(import.meta.url);
@@ -125,7 +121,6 @@ function _storeFlush() {
 }
 
 // ── Chromium flags ──────────────────────────────────────────────────────────
-if (IS_WIN) app.setAppUserModelId(APP_USER_MODEL_ID); // taskbar grouping, toasts and SMTC identity
 if (IS_LINUX) {
 // Opt-in (Settings → Display → Reduce animations): Chromium's reduced-motion preference makes the
 // web player show still artwork instead of animated backgrounds.
@@ -174,16 +169,6 @@ if (IS_LINUX) {
 let win    = null;
 let tray   = null;
 const linkSchemes = createLinkSchemeManager({ app, loadPrefs, savePrefs });
-// Windows blur theme uses the local Composition Gaussian backend on both supported Windows versions.
-const _acrylicBackend = !IS_WIN ? null
-    : acrylicBackend(os.release());
-const _acrylicSettings = () => normalizeAcrylic(loadPrefs().winAcrylic, _acrylicBackend?.materials);
-// Windows window/taskbar icon when running from source: a packaged build's icon is stamped into kapple-music.exe by the installer.
-const _devWindowIcon = IS_WIN && !app.isPackaged ? { icon: path.join(__dirname, 'icon.ico') } : {};
-if (_acrylicBackend) nativeTheme.on('updated', () => {
-    if (_acrylicSettings().theme === 'system') _applyAcrylic();
-});
-let winIntegration = null; // Windows only: SMTC, taskbar buttons, jump list, login item
 const _startHidden = process.argv.includes('--hidden');
 let isQuitting = false;
 
@@ -240,7 +225,6 @@ if (_gotLock) {
     } catch (e) { console.warn('[Kapple Music cleanup] skipped:', e.message); }
 }
 app.on('second-instance', (_e, argv) => {
-    if (winIntegration?.handleArgv(argv)) return; // jump-list transport command
     // The clicked link is one of the arguments (xdg-open and the OS pass it on the command line).
     const url = argv.find(isLinkArg);
     if (url) _dispatchDeepLink(url);
@@ -270,7 +254,7 @@ const _vlcDir     = app.isPackaged ? _vlcPkgDir : (existsSync(_vlcDevDir) ? _vlc
 // the engine's music-video remux and export work (the engine finds "ffmpeg" on PATH), and on Linux its
 // libraries are the ones VLC's libavcodec plugin loads. Bundled so no package depends on the host's FFmpeg.
 const _ffDir = app.isPackaged ? path.join(process.resourcesPath, 'ffmpeg')
-                              : path.join(__dirname, '..', 'third_party', IS_WIN ? 'ffmpeg-win' : 'ffmpeg');
+                              : path.join(__dirname, '..', 'third_party', 'ffmpeg');
 
 const ENGINE_DATA_DIR = path.join(CONFIG_DIR, 'engine-data');
 const EXPORT_PICKED_FILE = path.join(CONFIG_DIR, 'export-folders.txt');
@@ -389,12 +373,11 @@ const engineLifecycle = createEngineLifecycle({
         const libEnv = engineLibEnv({
             vlcDir: _vlcDir, ffDir: _ffDir, resDir: path.dirname(ENGINE_BIN),
             hasVlc: existsSync(_vlcDir),
-            hasFfmpeg: existsSync(path.join(_ffDir, 'bin', IS_WIN ? 'ffmpeg.exe' : 'ffmpeg')),
+            hasFfmpeg: existsSync(path.join(_ffDir, 'bin', 'ffmpeg')),
         });
         // Windows env names are case-insensitive: spreading process.env keeps "Path", so drop it
         // before adding our PATH or the child would see two competing entries.
         const baseEnv = { ...process.env };
-        if (IS_WIN && libEnv.PATH) delete baseEnv.Path;
         return spawn(ENGINE_BIN, ['--api', String(ENGINE_PORT)], {
             cwd: ENGINE_DATA_DIR,
             stdio: ['ignore', 'pipe', 'pipe'],
@@ -425,7 +408,6 @@ const FAIRPLAY_LIB64 = path.join(CONFIG_DIR, 'drm', 'rootfs', 'system', 'lib64')
 let _reloadEngineOnPause = false;
 function ensureFairPlayLibs() {
     if (!app.isPackaged) return;
-    if (IS_WIN) return ensureFairPlayLibsWindows();
     if (!IS_LINUX) return;
     if (existsSync(path.join(FAIRPLAY_LIB64, 'libandroidappmusic.so'))) return;
     const script = path.join(process.resourcesPath, 'fetch-fairplay-libs.sh');
@@ -440,24 +422,6 @@ function ensureFairPlayLibs() {
         if (_lastMprisStatus === 'Playing') _reloadEngineOnPause = true;
         else engineLifecycle.reload();
     });
-}
-
-// Windows: the same download, done in-process (no shell). Only builds that ship the DRM runtime
-// (libdrm_client.dll) fetch anything; the AAC-only build has no use for the libraries.
-function ensureFairPlayLibsWindows() {
-    const res = process.resourcesPath;
-    if (!existsSync(path.join(res, 'libdrm_client.dll'))) return;
-    if (['libandroidappmusic.so', 'libdl.so'].every(n => existsSync(path.join(FAIRPLAY_LIB64, n)))) return;
-    console.log('[Kapple Music] Downloading the FairPlay libraries for lossless playback...');
-    fetchFairPlayLibs({
-        lockPath: path.join(res, 'fairplay-libs.lock'), stubsDir: path.join(res, 'android-stubs'),
-        dest: FAIRPLAY_LIB64, log: m => console.error('[Kapple Music] fairplay:', m),
-    }).then(r => {
-        if (!r.ok) return console.error('[Kapple Music] FairPlay libraries unavailable; lossless stays off:', r.failed.join(', '));
-        console.log('[Kapple Music] FairPlay libraries ready; enabling lossless');
-        if (_lastMprisStatus === 'Playing') _reloadEngineOnPause = true;
-        else engineLifecycle.reload();
-    }).catch(e => console.error('[Kapple Music] FairPlay download failed:', e.message));
 }
 
 // ── Compositor / blur detection ───────────────────────────────────────────────
@@ -691,7 +655,7 @@ function _applyThemeVars(palette) {
 
 function _clearThemeVars() {
     if (!win) return;
-    nativeTheme.themeSource = _acrylicBackend ? _acrylicSettings().theme : 'system';
+    nativeTheme.themeSource = 'system';
     win.webContents.executeJavaScript(`(function(){
         const r = document.documentElement;
         ['--kapple-nav-bg','--kapple-nav-border','--kapple-accent','--kapple-accent-active','--kapple-nav-text','--kapple-nav-text-sec','--kapple-bg-color']
@@ -853,10 +817,8 @@ function createWindow() {
         // Electron strips WS_THICKFRAME and WS_CAPTION from a transparent window, and without them Windows will
         // not snap it by dragging to an edge or animate maximize and restore. Elsewhere the glass is CSS and the
         // window stays transparent.
-        transparent: !_acrylicBackend,
-        ...(_acrylicBackend ? { frame: false, hasShadow: true, maximizable: true } : {}),
+        transparent: true,
         show: false,
-        ..._devWindowIcon,
         title: 'Kapple Music',
         webPreferences: {
             preload: path.join(__dirname, 'preload.cjs'),
@@ -868,9 +830,6 @@ function createWindow() {
             additionalArguments: DEBUG_OUTPUT ? ['--kapple-debug=1'] : [],
         },
     });
-
-    if (_acrylicBackend && IS_WIN) setNativeCaptionDrag(win);
-    if (_acrylicBackend) _applyAcrylic();
 
     win.on('page-title-updated', (e) => e.preventDefault());
     let initialLoadRetried = false;
@@ -931,7 +890,6 @@ function createWindow() {
         // on app:ui-ready). Hyprland reads its own wallpaper config; Windows and GNOME use the
         // wallpaper file; anything else falls back to a software screenshot blur (X11 / Sway).
         if (_isHyprland) _applyHyprlandWallpaperBlur(win);
-        else if (_acrylicBackend) { /* the acrylic window is the blur; the page overlays are applied on load */ }
         else if (_desktop.includes('gnome')) {
             _applyPlatformWallpaperBlur(win).then(ok => { if (!ok && _useSoftBlur) refreshBlurBg(); });
         } else if (_useSoftBlur) refreshBlurBg();
@@ -1417,7 +1375,7 @@ function createWindow() {
         if (!isQuitting) {
             e.preventDefault();
             win.hide();
-        } else removeCompositionBackdrop(win);
+        }
     });
 
     win.on('closed', () => { win = null; });
@@ -1639,7 +1597,6 @@ function applyPersistedViewSettings() {
         ).catch(() => {});
     applyTweak('__noop', null);
     applyThemeMode();
-    _applyAcrylicPage();
 }
 
 // ── IPC sender check ─────────────────────────────────────────────────────────
@@ -1794,40 +1751,6 @@ ipcMain.on('view:nav-opacity', (_, v) => {
     _applyNavAlpha();
 });
 
-// ── Acrylic window (Windows) ─────────────────────────────────────────────────
-// The windows that carry the acrylic: the main window and the mini player share the one setting.
-const _acrylicWindows = () => [win, miniWin].filter(w => w && !w.isDestroyed());
-
-function _applyAcrylicPage() {
-    if (!_acrylicBackend) return;
-    const s = _acrylicSettings();
-    for (const w of _acrylicWindows())
-        w.webContents.executeJavaScript(acrylicOverlayScript(s, { drag: w === win })).catch(() => {});
-}
-
-function _applyAcrylicMaterial(w, s) {
-    try {
-        setCompositionBackdrop(w, s);
-    } catch (e) { console.warn('[Kapple Music] Windows Composition backdrop:', e.message); }
-}
-
-// Pushes the saved settings to the windows: the material, and the native theme while the blur theme is on.
-function _applyAcrylic() {
-    if (!_acrylicBackend) return;
-    const s = _acrylicSettings();
-    if (_resolveThemeMode(loadPrefs()) === 'blur') nativeTheme.themeSource = s.theme;
-    for (const w of _acrylicWindows()) _applyAcrylicMaterial(w, s);
-    _applyAcrylicPage();
-}
-
-ipcMain.handle('acrylic:set', (_e, patch) => {
-    if (!_acrylicBackend) return null;
-    const p = loadPrefs();
-    p.winAcrylic = normalizeAcrylic({ ..._acrylicSettings(), ...(patch && typeof patch === 'object' ? patch : {}) }, _acrylicBackend.materials);
-    savePrefs(p);
-    _applyAcrylic();
-    return p.winAcrylic;
-});
 
 // ── Theme IPC ────────────────────────────────────────────────────────────────
 ipcMain.handle('theme:get-info', async () => {
@@ -1843,7 +1766,7 @@ ipcMain.handle('theme:get-info', async () => {
             ...(p.themePresets || []),
         ],
         customCssPath:  p.customCssPath || null,
-        acrylic:        _acrylicBackend ? { ..._acrylicSettings(), materials: _acrylicBackend.materials, defaults: ACRYLIC_DEFAULTS } : null,
+        acrylic:        null,
     };
 });
 
@@ -2214,7 +2137,6 @@ ipcMain.on('mpris:update', (_, data) => {
 
     // Mirror now-playing to the mini player if it's open.
     sendMiniState(data);
-    winIntegration?.update(data);
 
     const wasNull = !mprisPlayer;
     if (!mprisPlayer) mprisPlayer = createMprisPlayer();
@@ -2677,7 +2599,6 @@ function createMiniPlayer() {
         fullscreenable: false,
         skipTaskbar: true,
         alwaysOnTop: true,
-        ..._devWindowIcon,
         title: 'Kapple Music — Mini Player',
         webPreferences: {
             preload: path.join(__dirname, 'miniplayer-preload.cjs'),
@@ -2692,10 +2613,6 @@ function createMiniPlayer() {
         },
     });
     miniWin.setAlwaysOnTop(true, 'floating');
-    if (_acrylicBackend) {
-        _applyAcrylicMaterial(miniWin, _acrylicSettings());
-        miniWin.webContents.on('did-finish-load', _applyAcrylicPage);
-    }
     miniWin.loadFile(path.join(__dirname, 'miniplayer.html'));
     miniWin.once('ready-to-show', () => {
         miniWin.show();
@@ -2705,7 +2622,6 @@ function createMiniPlayer() {
         sendMiniState({ metadata: _lastMprisMetadata, status: _lastMprisStatus, position: _lastMprisPosition });
         try { win?.webContents.send('miniplayer:sync'); } catch (_) {}
     });
-    miniWin.on('close', () => removeCompositionBackdrop(miniWin));
     miniWin.on('closed', () => { miniWin = null; restoreMainFromMini(); });
 }
 
@@ -2741,7 +2657,6 @@ function createTray() {
         ? path.join(process.resourcesPath, 'tray-icon.png')
         : path.join(__dirname, '..', 'assets', 'tray-icon.png');
     let icon = nativeImage.createFromPath(iconPath);
-    if (IS_WIN) icon = icon.resize({ width: 16, height: 16 });
 
     tray = new Tray(icon);
     tray.setToolTip('Kapple Music');
@@ -3051,17 +2966,7 @@ app.whenReady().then(() => {
 
     Menu.setApplicationMenu(null);
     linkSchemes.apply(); // claim the Apple Music schemes the user turned on (none by default)
-    if (IS_WIN) {
-        winIntegration = createWinIntegration({
-            app, getWin: () => win, nativeImage,
-            sendCmd: (c) => win?.webContents.send('mpris:cmd', c),
-        });
-    }
     createWindow();
-    if (winIntegration) {
-        winIntegration.init();
-        win.on('show', () => winIntegration.refresh());
-    }
     createTray();
 
     // Global media key shortcuts — catches Bluetooth AVRCP play/pause/next/prev
@@ -3075,7 +2980,7 @@ app.whenReady().then(() => {
     ];
     // Windows routes hardware media keys through the SMTC session (win-integration.mjs); a global
     // shortcut on top would deliver every key press twice and cancel itself out.
-    if (!IS_WIN) for (const [key, fn] of _mkShortcuts) {
+    for (const [key, fn] of _mkShortcuts) {
         if (!globalShortcut.register(key, fn))
             console.warn('[Kapple Music] media key shortcut already taken by another app:', key);
     }

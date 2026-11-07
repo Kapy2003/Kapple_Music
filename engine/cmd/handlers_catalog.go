@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"regexp"
 
 	"engine/utils/ampapi"
@@ -63,43 +62,6 @@ func (s *APIServer) handleCatalogArtist(w http.ResponseWriter, r *http.Request) 
 	resp, err := artworkClient.Do(req)
 	if err != nil {
 		http.Error(w, "artist fetch failed: "+err.Error(), http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body) //nolint:errcheck
-}
-
-func (s *APIServer) handleCatalogSearch(w http.ResponseWriter, r *http.Request) {
-	sf := r.URL.Query().Get("sf")
-	if sf == "" {
-		sf = s.storefront()
-	}
-	if sf == "" {
-		sf = "us"
-	}
-	term := r.URL.Query().Get("term")
-	if term == "" {
-		http.Error(w, "term required", http.StatusBadRequest)
-		return
-	}
-	tok := s.token()
-	req, err := http.NewRequestWithContext(r.Context(), "GET",
-		fmt.Sprintf("https://amp-api.music.apple.com/v1/catalog/%s/search?term=%s&types=songs,albums,artists&limit=25", sf, url.QueryEscape(term)), nil)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	req.Header.Set("Authorization", "Bearer "+tok)
-	req.Header.Set("User-Agent", "Mozilla/5.0")
-	req.Header.Set("Origin", "https://music.apple.com")
-	query := req.URL.Query()
-	query.Set("l", s.lang(r))
-	req.URL.RawQuery = query.Encode()
-	resp, err := artworkClient.Do(req)
-	if err != nil {
-		http.Error(w, "search failed: "+err.Error(), http.StatusBadGateway)
 		return
 	}
 	defer resp.Body.Close()

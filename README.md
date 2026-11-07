@@ -5,7 +5,6 @@
 [![GitHub release](https://img.shields.io/github/v/release/Kapy2003/Kapple_Music?include_prereleases&style=for-the-badge)](https://github.com/Kapy2003/Kapple_Music/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows-blue?style=for-the-badge)](https://github.com/Kapy2003/Kapple_Music/releases/latest)
-[![Discord](https://img.shields.io/badge/Discord-join%20the%20server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/tY4v52KpVV)
 
 An Apple Music desktop client for Linux and Windows — lossless audio on Linux, music videos, downloads, and a native-feeling UI.
 

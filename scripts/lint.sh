@@ -22,13 +22,13 @@ run go vet ./...
 step "Go: staticcheck"
 if command -v staticcheck >/dev/null 2>&1; then run staticcheck ./...
 elif [ -x "$(go env GOPATH)/bin/staticcheck" ]; then run "$(go env GOPATH)/bin/staticcheck" ./...
-else echo "staticcheck not installed: go install honnef.co/go/tools/cmd/staticcheck@2026.2.2"; fail=1; fi
+else echo "staticcheck not installed: go install honnef.co/go/tools/cmd/staticcheck@latest"; fail=1; fi
 
 step "C: clang-format (drm/, own sources only)"
 if command -v clang-format >/dev/null 2>&1; then
     if [ "$fix" = 1 ]; then make -s -C "$repo/drm" format; fi
     run make -s -C "$repo/drm" format-check
-else echo "clang-format not installed (pip install clang-format==23.1.1)"; fail=1; fi
+else echo "clang-format not installed (pip install clang-format)"; fail=1; fi
 
 step "JS: eslint"
 cd "$repo/electron"

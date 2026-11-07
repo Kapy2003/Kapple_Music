@@ -42,7 +42,7 @@ jobs:
         run: test -z "$(gofmt -s -l $(git ls-files '*.go' | xargs grep -L '^// Code generated .* DO NOT EDIT\.$') | tee /dev/stderr)"
       - run: go vet ./...
       - name: staticcheck
-        run: go run honnef.co/go/tools/cmd/staticcheck@2026.2.2 ./...
+        run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
       - run: go test ./...
 
   electron:
@@ -83,7 +83,7 @@ jobs:
           lfs: false
       - name: clang-format (same version as .clang-format was applied with)
         run: |
-          pip install --user clang-format==23.1.1
+          pip install --user clang-format
           export PATH="$HOME/.local/bin:$PATH"
           clang-format --version
           make -C drm format-check

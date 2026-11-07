@@ -1,4 +1,4 @@
-//go:build adamplay_backend && drmlive
+//go:build (kappleplay_backend || adamplay_backend) && drmlive
 
 package main
 

@@ -175,10 +175,6 @@ drm/embedded_blobs/
 drm/files/
 drm/*.o
 
-# Flatpak build output
-.flatpak-build/
-.flatpak-builder/
-.flatpak-repo/
 .ffmpeg-build/
 
 # ── Local-only research material and tooling (never publish) ──────────────────

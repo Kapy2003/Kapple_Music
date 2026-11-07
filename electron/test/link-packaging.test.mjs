@@ -12,7 +12,6 @@ const linuxSchemes = [OWN_SCHEME, ...APPLE_SCHEMES.filter(s => !s.windowsOnly).m
 test('the desktop entries and AppImage config declare every Linux scheme', () => {
     const pkg = JSON.parse(read('../package.json'));
     const targets = {
-        'flatpak desktop': read('../../flatpak/io.github.Kapy2003.KappleMusic.desktop'),
         'installer desktop': read('../../scripts/installer-header.sh'),
         'AppImage mimeTypes': pkg.build.linux.mimeTypes.join(';') + ';',
     };

@@ -24,8 +24,8 @@ test('a session saved inside the install dir by older builds is migrated once', 
     assert.match(body, /!existsSync\(drmBase\)\s*&&\s*existsSync\(legacyBase\)/);
 });
 
-test('CONFIG_DIR follows XDG_CONFIG_HOME only inside a Flatpak', () => {
+test('CONFIG_DIR follows XDG_CONFIG_HOME or ~/.config', () => {
     const PLATFORM = readFileSync(new URL('../platform.mjs', import.meta.url), 'utf8');
-    assert.match(PLATFORM, /env\.FLATPAK_ID && env\.XDG_CONFIG_HOME/);
+    assert.match(PLATFORM, /XDG_CONFIG_HOME/);
     assert.match(MAIN, /configRoot\(\)/);
 });

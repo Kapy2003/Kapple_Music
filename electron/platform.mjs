@@ -10,11 +10,10 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmdirSync, statSync } f
 export const IS_WIN = process.platform === 'win32';
 export const IS_LINUX = process.platform === 'linux';
 
-// Directory that holds the `kapple-music` config folder. Windows: %APPDATA%. Inside a
-// Flatpak the real ~/.config is invisible and XDG_CONFIG_HOME is the app's own directory.
+// Directory that holds the `kapple-music` config folder.
 export function configRoot(plat = process.platform, env = process.env, home = os.homedir()) {
     if (plat === 'win32') return env.APPDATA || path.win32.join(home, 'AppData', 'Roaming');
-    return env.FLATPAK_ID && env.XDG_CONFIG_HOME ? env.XDG_CONFIG_HOME : path.posix.join(home, '.config');
+    return env.XDG_CONFIG_HOME || path.posix.join(home, '.config');
 }
 
 export const engineFileName = (plat = process.platform) => (plat === 'win32' ? 'engine.exe' : 'engine');

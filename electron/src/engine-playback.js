@@ -331,9 +331,10 @@ if (window._kappleDebug) (function installAudioCapture() {
 
 // ── Native handles ─────────────────────────────────────────────────────────────
 
-let _nativeSrcSet = null; // saved by blockAppleCDN() for our own src writes
-let _nativeCTSet  = null; // native currentTime setter — used by MSE seek to fire 'seeking'
-let _nativePlay   = null; // saved when play() proxy is installed on the element
+let _nativeSrcSet   = null; // saved by blockAppleCDN() for our own src writes
+let _nativeCTSet    = null; // native currentTime setter — used by MSE seek to fire 'seeking'
+let _nativeMutedSet = null; // native muted setter — suppresses web audio leaks during handoff to VLC
+let _nativePlay     = null; // saved when play() proxy is installed on the element
 let _ourBlobUrl   = null; // current blob URL we own; blocks MK from replacing it
 let _allowCDNTransition  = false; // temporarily lifted during changeToMediaAtIndex so MK can settle NPIDF
 let _externalPlayGateTimer = null; // safety reset timer for _allowCDNTransition
@@ -801,8 +802,9 @@ function blockAppleCDN() {
     window.__kappleCDNBlocked = true;
 
     const desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
-    _nativeSrcSet = desc.set;
-    _nativeCTSet  = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime').set;
+    _nativeSrcSet   = desc.set;
+    _nativeCTSet    = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime').set;
+    _nativeMutedSet = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'muted')?.set;
 
     const isAppleCDN = url =>
         url && !url.startsWith('blob:') && !url.startsWith('data:') && url !== '' &&
@@ -812,7 +814,10 @@ function blockAppleCDN() {
         get: desc.get,
         set(val) {
             if (isAppleCDN(val) && !_allowCDNTransition) { console.log('[Kapple Music Engine] Blocked CDN src:', val.slice(0, 80)); return; }
-            if (isAppleCDN(val) && _allowCDNTransition) { console.log('[Kapple Music Engine] CDN src THROUGH (gate open):', val.slice(0, 80)); }
+            if (isAppleCDN(val) && _allowCDNTransition) {
+                console.log('[Kapple Music Engine] CDN src THROUGH (gate open):', val.slice(0, 80));
+                if (_nativeMutedSet && (_vlcMode || _engineCaps.lossless)) _nativeMutedSet.call(this, true);
+            }
             if (_allowCDNTransition && val !== undefined) { console.log('[AUDIO-SRC] gate-open src set → "' + String(val).slice(0,60) + '"'); }
             // Block foreign blob URLs: always when _ourBlobUrl is set (original guard),
             // and also during an active goto transition before our stream is open.
@@ -4556,6 +4561,7 @@ async function _setupMSEPath(mkAudio, sess, mk, ctrl, t0) {
     // New src detaches the old MediaSource — prev session can no longer be seeked.
     _prevMs = null; _prevSb = null;
     _nativeSrcSet.call(mkAudio, blobUrl);
+    if (_nativeMutedSet) _nativeMutedSet.call(mkAudio, false);
 
     delete mkAudio.load;
     HTMLMediaElement.prototype.load.call(mkAudio);
@@ -4749,6 +4755,7 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
     const _silentUrl = URL.createObjectURL(_silentMs);
     _prevMs = null; _prevSb = null;
     _nativeSrcSet.call(mkAudio, _silentUrl);
+    if (_nativeMutedSet) _nativeMutedSet.call(mkAudio, true);
     delete mkAudio.load;
     HTMLMediaElement.prototype.load.call(mkAudio);
     mkAudio.load = () => {};
@@ -5096,6 +5103,7 @@ async function handleTrackChange(mk) {
         // Skip pause if audio already ended (natural track end): calling pause() on an ended
         // MediaSource element re-fires 'ended', causing a spurious double-advance through the queue.
         if (!mkAudio.paused && !mkAudio.ended) mkAudio.pause();
+        if (_nativeMutedSet && (_vlcMode || _engineCaps.lossless)) _nativeMutedSet.call(mkAudio, true);
         // Absorb MK's load() calls so it can't reset our MSE stream.
         // We lift this shadow for our own controlled _nativeLoad() call below.
         mkAudio.load = () => {};
@@ -7768,6 +7776,7 @@ async function setup() {
                 + ' catalogId=' + (_pendingExternalClickCatalogId || 'not-found')
                 + (_pendingPlaylistId ? ' playlist=' + _pendingPlaylistId + ' (pre-fetching)' : ''));
             _allowCDNTransition = true;
+            if (_nativeMutedSet) _nativeMutedSet.call(getMKAudio(), true);
             _ourBlobUrl = null;
 
             // ── MK API + audio-element instrumentation during CDN gate window ──────

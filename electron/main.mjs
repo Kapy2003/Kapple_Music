@@ -37,7 +37,7 @@ const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ── Persistence ──────────────────────────────────────────────────────────────
-// %APPDATA% on Windows; ~/.config elsewhere (or the Flatpak's own XDG_CONFIG_HOME). See platform.mjs.
+// %APPDATA% on Windows; ~/.config elsewhere. See platform.mjs.
 const CONFIG_DIR = migrateLegacyConfig(configRoot(), 'kapple-music');
 const PREF_FILE  = path.join(CONFIG_DIR, 'electron-prefs.json');
 

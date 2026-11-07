@@ -107,7 +107,7 @@ An Apple Music desktop client for Linux and Windows — lossless audio on Linux,
 
 ## Requirements
 
-- Linux x86_64 with glibc ≥ 2.35 (Ubuntu 22.04+, Fedora 36+, Debian 12+), PulseAudio or PipeWire — or Windows 10/11 x64
+- Linux x86_64 with glibc ≥ 2.35 (Ubuntu 22.04+, Fedora 36+, Debian 12+), PulseAudio or PipeWire
 - Apple Music subscription
 
 VLC and a minimal FFmpeg are bundled in every Linux package — no system VLC or FFmpeg needed.
@@ -116,14 +116,12 @@ A Wayland compositor with blur support (Hyprland, KWin) gives the best glass UI.
 
 ## Download & Install
 
-Four formats are available. The three Linux ones (A–C) contain the same build.
+Two formats are available (both contain the same build):
 
 | | Format | Size | Best for |
 |:-:|---|--:|---|
 | **A** | [`.run` installer](#option-a--run-installer-96-mb-recommended) | 96 MB | Most Linux users — no root needed (**recommended**) |
 | **B** | [AppImage](#option-b--appimage-140-mb-portable) | 140 MB | Portable, nothing installed |
-| **C** | [Flatpak](#option-c--flatpak-118-mb-experimental) | 118 MB | Sandboxed (experimental) |
-| **D** | [Windows installer](#option-d--windows-installer-experimental) | 108 MB | Windows 10/11 x64 — AAC and music videos (experimental) |
 
 ### Option A — `.run` installer (96 MB, recommended)
 
@@ -161,7 +159,7 @@ open source. The `.run` installer fetches them at the end of the install; the ot
 <summary>Where they come from and how to repair them</summary>
 
 - The `.run` installer downloads them at the end of a user install (~65 MB).
-- The AppImage, a `--system` install and the Flatpak download them in the background on first launch;
+- The AppImage and a `--system` install download them in the background on first launch;
   lossless switches on by itself once they are in place (at the next pause if something is playing).
 - They come from the [wrapper project](https://github.com/WorldObservationLog/wrapper), with
   [a fork](https://github.com/Kapy2003/wrapper) as fallback, pinned to fixed commits. Every file
@@ -184,42 +182,6 @@ chmod +x Kapple-Music-*-x86_64.AppImage
 [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) can integrate it into your app menu automatically on first run.
 
 Release builds are made on Ubuntu 22.04 (glibc 2.35, checked in CI by `scripts/check-glibc.sh`) and packed with the static AppImage runtime, so they start on 22.04 and newer without `libfuse2`. If your system still has trouble mounting AppImages, run it without FUSE: `./Kapple-Music-*-x86_64.AppImage --appimage-extract-and-run`.
-
-### Option C — Flatpak (118 MB, experimental)
-
-A single-file Flatpak bundle that runs in the Flatpak sandbox. You need `flatpak` installed and the Flathub remote configured (the bundle pulls the freedesktop runtime from it).
-
-```bash
-flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --user kapple-music.flatpak
-flatpak run io.github.Kapy2003.KappleMusic
-```
-
-It also appears in your app menu as **Kapple Music**. To remove it: `flatpak uninstall --user io.github.Kapy2003.KappleMusic`.
-
-<details>
-<summary>Things to know</summary>
-
-- It keeps its own settings and web session under `~/.var/app/io.github.Kapy2003.KappleMusic/`, separate from the other formats, so you sign in again.
-- Only one copy of the app can run at a time (the engine uses port 20025), so close the other formats first.
-- Wallpaper detection for the blur theme is limited by the sandbox; the software blur is used instead.
-- This is a self-hosted bundle, not a Flathub listing.
-
-</details>
-
-### Option D — Windows installer (experimental)
-
-`kapple-music-setup-<version>.exe` is an NSIS installer for Windows 10/11 x64. It bundles the engine and a minimal FFmpeg, and plays AAC and music videos. The app follows Windows conventions: settings in `%APPDATA%\kapple-music`, a native blur-behind window backdrop, and the same Apple Music pink default theme.
-
-Windows integration:
-
-- **Media controls** — the Windows media overlay, lock screen and hardware media keys show the current track and drive play/pause/next/previous/seek (SMTC).
-- **Taskbar** — thumbnail buttons (previous, play/pause, next), playback progress on the taskbar icon, and jump-list tasks.
-- **Startup** — optional *Launch at login* in the tray menu (starts hidden in the tray) and the `kapple-music://` link handler.
-- **Discord Rich Presence** over the Windows named pipe.
-
-> [!NOTE]
-> Not in the release yet: lossless/ALAC on Windows (it is in the nightly builds, announced in the Discord server's nightly channel; the [`nightly`](https://github.com/Kapy2003/Kapple_Music/tree/nightly) branch builds it).
 
 ### GNOME
 

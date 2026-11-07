@@ -18,8 +18,8 @@ export function normalizeSelection(list) {
 }
 
 // The desktop file Linux associates with our schemes.
-export function linuxDesktopId(env = process.env) {
-    return env.FLATPAK_ID ? `${env.FLATPAK_ID}.desktop` : 'kapple-music.desktop';
+export function linuxDesktopId() {
+    return 'kapple-music.desktop';
 }
 
 // Drop `x-scheme-handler/<scheme>=…` associations that point at `desktopId` from the text of a

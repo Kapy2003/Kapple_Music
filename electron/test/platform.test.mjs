@@ -7,12 +7,11 @@ import {
     parseSsListeningPid, isPortFree, yamlStr, migrateLegacyConfig, migrateStoreKeys,
 } from '../platform.mjs';
 
-test('configRoot: %APPDATA% on Windows, ~/.config elsewhere, Flatpak override', () => {
+test('configRoot: %APPDATA% on Windows, ~/.config elsewhere, XDG_CONFIG_HOME override', () => {
     assert.equal(configRoot('win32', { APPDATA: 'C:\\Users\\a\\AppData\\Roaming' }, 'C:\\Users\\a'), 'C:\\Users\\a\\AppData\\Roaming');
     assert.match(configRoot('win32', {}, '/h'), /AppData[\\/]Roaming$/);
     assert.equal(configRoot('linux', {}, '/home/a'), '/home/a/.config');
-    assert.equal(configRoot('linux', { FLATPAK_ID: 'x', XDG_CONFIG_HOME: '/flat' }, '/home/a'), '/flat');
-    assert.equal(configRoot('linux', { XDG_CONFIG_HOME: '/flat' }, '/home/a'), '/home/a/.config');
+    assert.equal(configRoot('linux', { XDG_CONFIG_HOME: '/custom' }, '/home/a'), '/custom');
 });
 
 test('engineFileName', () => {

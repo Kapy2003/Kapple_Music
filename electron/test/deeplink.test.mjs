@@ -227,9 +227,8 @@ test('on Linux, disabling removes our mimeapps.list entries and keeps the others
     assert.ok(!existsSync(f + '.kapple-tmp'));
 });
 
-test('linuxDesktopId follows Flatpak', () => {
-    assert.equal(linuxDesktopId({}), 'kapple-music.desktop');
-    assert.equal(linuxDesktopId({ FLATPAK_ID: 'io.github.Kapy2003.KappleMusic' }), 'io.github.Kapy2003.KappleMusic.desktop');
+test('linuxDesktopId returns standard desktop file name', () => {
+    assert.equal(linuxDesktopId(), 'kapple-music.desktop');
 });
 
 test('addSchemeAssociations puts Kapple Music first, keeps others, and is idempotent', () => {

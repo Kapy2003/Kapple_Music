@@ -156,7 +156,7 @@ app.commandLine.appendSwitch('enable-smooth-scrolling');
 // Chromium flag required for transparent windows on Linux.
 // Hyprland/KWin handle the compositor-level blur-behind on the desktop
 // side; Chromium just needs to render RGBA frames correctly.
-if (IS_LINUX) app.commandLine.appendSwitch('enable-transparent-visuals');
+if (IS_LINUX) app.commandLine.appendSwitch('enable-zero-copy');
 // Sandbox detection: requires both unprivileged user namespaces AND a non-FUSE
 // root. AppImages use FUSE mounts that break the zygote sandbox startup even
 // when namespaces work, so we disable it whenever APPIMAGE is set.
@@ -438,16 +438,12 @@ console.log(`[Kapple Music] Compositor: desktop=${_desktop || '(unset)'} wayland
 // Used on X11 or Wayland compositors that don't support blur-behind (GNOME/Sway).
 // Captures a desktop screenshot, sends it to the renderer as a blurred CSS background.
 // KDE is excluded: we use the native _KDE_NET_WM_BLUR_BEHIND_REGION atom instead.
-let _useSoftBlur = IS_LINUX && !_isKde && (!_isWayland ||
-    ['gnome', 'sway', 'unity', 'cosmic', 'budgie'].some(d => _desktop.includes(d)));
+// ponytail: software screenshot blur loops drop FPS significantly on Linux; keep disabled.
+let _useSoftBlur = false;
 
-// GPU crash → activate software blur regardless of compositor so the window
-// doesn't show a black void.
 app.on('gpu-process-crashed', (_event, killed) => {
     if (killed || !IS_LINUX) return;
-    console.warn('[Kapple Music] GPU process crashed — activating software blur fallback');
-    _useSoftBlur = true;
-    refreshBlurBg();
+    console.warn('[Kapple Music] GPU process crashed');
 });
 
 // ── KDE Wayland: wallpaper-based software blur ───────────────────────────────
@@ -713,7 +709,7 @@ function applyKdeBlurBehind(bwin) {
             _x11.createClient((err, display) => {
                 if (err) {
                     console.warn('[Kapple Music] KDE blur: X11 connect failed:', err.message, '— using software blur');
-                    _useSoftBlur = true; refreshBlurBg();
+                    // software blur disabled
                     return;
                 }
                 const X = display.client;
@@ -812,12 +808,8 @@ function createWindow() {
         // Fully transparent so the compositor (Hyprland/KWin) can render
         // the desktop behind the window with its own blur effect, giving
         // us the visionOS "glass over room" look for free.
-        backgroundColor: '#00000000',
-        // The compositor backdrop shows through a transparent page, so the window itself must NOT be transparent:
-        // Electron strips WS_THICKFRAME and WS_CAPTION from a transparent window, and without them Windows will
-        // not snap it by dragging to an edge or animate maximize and restore. Elsewhere the glass is CSS and the
-        // window stays transparent.
-        transparent: true,
+        backgroundColor: '#161618',
+        transparent: false,
         show: false,
         title: 'Kapple Music',
         webPreferences: {
@@ -889,10 +881,12 @@ function createWindow() {
         // Blur layer (needs executeJavaScript, so it runs after the page is loaded; showWindow fires
         // on app:ui-ready). Hyprland reads its own wallpaper config; Windows and GNOME use the
         // wallpaper file; anything else falls back to a software screenshot blur (X11 / Sway).
-        if (_isHyprland) _applyHyprlandWallpaperBlur(win);
-        else if (_desktop.includes('gnome')) {
-            _applyPlatformWallpaperBlur(win).then(ok => { if (!ok && _useSoftBlur) refreshBlurBg(); });
-        } else if (_useSoftBlur) refreshBlurBg();
+        if (_useSoftBlur) {
+            if (_isHyprland) _applyHyprlandWallpaperBlur(win);
+            else if (_desktop.includes('gnome')) {
+                _applyPlatformWallpaperBlur(win).then(ok => { if (!ok && _useSoftBlur) refreshBlurBg(); });
+            } else refreshBlurBg();
+        }
     };
     win.on('move', () => {
         // Position tracking is handled by requestAnimationFrame in the renderer.
@@ -950,7 +944,7 @@ function createWindow() {
     const { glassBlur = 20, glassOpacity = 0.07, bgBlur = 18 } = loadPrefs();
     const earlyCss = `
         :root { --kapple-glass-blur: ${glassBlur}px; --kapple-glass-opacity: ${glassOpacity}; --kapple-art-tint: rgba(255,255,255,0); --kapple-fallback-bg: none; --kapple-bg-blur: ${bgBlur}px; }
-        html, body { background: transparent !important; overscroll-behavior: none !important; }
+        html, body { background: #161618 !important; overscroll-behavior: none !important; }
         /* Strip grey tint from alternating content sections — let album art / wallpaper show through */
         .section--alternate, [class*="section--alternate"] { background: transparent !important; }
         /* "Also available in the iTunes Store" CTA — hidden everywhere. Matched by
@@ -961,10 +955,8 @@ function createWindow() {
         [data-testid="button-base-wrapper"]:has(> button[aria-label*="iTunes"]),
         [class*="native-cta-wrapper"]:has(button[aria-label*="iTunes"]) { display: none !important; }
         nav.navigation {
-            background: rgba(255,255,255,var(--kapple-glass-opacity)) !important;
-            backdrop-filter: blur(var(--kapple-glass-blur)) !important;
-            -webkit-backdrop-filter: blur(var(--kapple-glass-blur)) !important;
-            border-right: 1px solid rgba(255,255,255,0.12) !important;
+            background: rgba(28, 28, 30, 0.95) !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
         }
         /* Software blur layer: two real DOM divs injected by _injectBlurLayer().
            #_kappleBlurBg  — the (already blurred, see _blurredWallpaperUrl) wallpaper image,

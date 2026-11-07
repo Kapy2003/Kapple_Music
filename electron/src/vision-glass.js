@@ -14,28 +14,10 @@
     if (typeof readyFn !== 'function') return;
     if (window._kappleReadyFired || window._adamReadyFired) return;
 
-    // Poll the engine's DRM status until FairPlay (or Widevine) reports ready.
-    // Returns true as soon as either is ready, false after exhausting retries.
-    const waitForDRM = async (maxMs = 10000) => {
-        const engine = window._kappleEngineURL || window._adamEngineURL || 'https://127.0.0.1:20025';
-        const deadline = Date.now() + maxMs;
-        while (Date.now() < deadline) {
-            try {
-                const d = await fetch(`${engine}/api/v1/drm/status`).then(r => r.json());
-                const s = d?.state ?? d ?? {};
-                if (s.fairplay === 'ready' || s.widevine === 'ready') return true;
-            } catch { /* engine not up yet — keep polling */ }
-            await new Promise(r => setTimeout(r, 400));
-        }
-        return false; // timed out — let the 12 s main-process fallback handle it
-    };
-
-    const fire = async () => {
-        if (window._adamReadyFired) return;
-        await waitForDRM(10000);
+    const fire = () => {
         if (window._adamReadyFired) return;
         window._adamReadyFired = true;
-        window.adamReady();
+        readyFn();
     };
 
     const checkPage = () => {
@@ -48,7 +30,7 @@
     if (checkPage()) { fire(); return; }
     const obs = new MutationObserver(() => { if (checkPage()) { obs.disconnect(); fire(); } });
     obs.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => { obs.disconnect(); fire(); }, 10000);
+    setTimeout(() => { obs.disconnect(); fire(); }, 5000);
 })();
 
 // ── CSS custom properties ─────────────────────────────────────────────────────
@@ -66,7 +48,7 @@ sheet.replaceSync(`
     --adam-art-tint: rgba(var(--adam-art-r), var(--adam-art-g), var(--adam-art-b), 0.4);
   }
 
-  html, body { background: transparent !important; }
+  html, body { background: #161618 !important; }
 
   /* ── Sidebar glass ──
      Confirmed stable selector. Svelte hash classes change on every deploy;

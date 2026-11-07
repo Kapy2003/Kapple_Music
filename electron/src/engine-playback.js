@@ -6461,13 +6461,15 @@ async function setup() {
         if (!wasLossless && _engineCaps.lossless) _losslessWaitDone = false;
 
         // Sign-in progress: Apple asking for the verification code, success, failure.
-        _accountSheet().onSnapshot(snap);
+        if (_accountSheet().isOpen()) {
+            _accountSheet().onSnapshot(snap);
+        }
 
-        // Binary needs credentials but none are stored — open the sign-in form
-        // automatically so the user doesn't have to navigate to Settings.
+        // Binary needs credentials but none are stored — do not open unprompted.
+        // Lossless playback can be enabled any time via Settings → Account.
         if (snap?.challenge?.type === 'credentials') {
-            console.log('[Kapple Music Engine] DRM credential challenge — opening sign-in form');
-            window.__kappleOpenEngineSettings?.();
+            console.log('[Kapple Music Engine] DRM credentials not stored; lossless available via Settings → Account');
+            _losslessWaitDone = true;
         }
 
         // Note: mid-track seamless lossless upgrade is intentionally not attempted here.

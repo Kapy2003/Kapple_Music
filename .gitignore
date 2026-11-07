@@ -189,7 +189,6 @@ drm/*.o
 # Apple's FairPlay libraries (proprietary, never committed; see drm/fairplay-libs.lock).
 # No trailing slash: in a dev checkout drm/rootfs is often a symlink.
 /drm/rootfs
-/drm/native/
 
 # ── Windows composition backdrop: built by electron/native/build-composition-backdrop.cmd ──
 electron/native/*.dll

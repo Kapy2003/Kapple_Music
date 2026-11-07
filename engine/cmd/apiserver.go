@@ -39,7 +39,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"engine/internal/appdir"
 	"fmt"
 	"log"
 	"log/slog"
@@ -64,6 +63,7 @@ import (
 	"engine/core/playback"
 	"engine/core/prefetch"
 	"engine/core/vlc"
+	"engine/internal/appdir"
 	"engine/internal/ring"
 	"engine/utils/ampapi"
 )
@@ -981,7 +981,7 @@ func isAllowedOrigin(origin string) bool {
 	if !isLoopbackHost(u.Host) {
 		return false
 	}
-	if (os.Getenv("KAPPLE_ALLOW_LOCAL_ORIGINS") == "1" || os.Getenv("ADAM_ALLOW_LOCAL_ORIGINS") == "1") {
+	if os.Getenv("KAPPLE_ALLOW_LOCAL_ORIGINS") == "1" || os.Getenv("ADAM_ALLOW_LOCAL_ORIGINS") == "1" {
 		return true
 	}
 	return u.Port() == enginePort()

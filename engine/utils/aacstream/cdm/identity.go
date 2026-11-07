@@ -120,7 +120,7 @@ func InitConstants() {
 		}
 	}
 
-	if (os.Getenv("KAPPLE_GENERATE_IDENTITY") == "1" || os.Getenv("ADAM_GENERATE_IDENTITY") == "1") {
+	if os.Getenv("KAPPLE_GENERATE_IDENTITY") == "1" || os.Getenv("ADAM_GENERATE_IDENTITY") == "1" {
 		key, cid, err := generateIdentity()
 		if err == nil {
 			err = persistIdentity(dir, key, cid)

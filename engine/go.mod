@@ -1,6 +1,6 @@
 module engine
 
-go 1.23.0
+go 1.26.0
 
 require (
 	github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1

@@ -105,8 +105,6 @@ An Apple Music desktop client for Linux and Windows — lossless audio on Linux,
 
 - **Windows lossless** — available in the nightly builds (Discord server, nightly channel); not yet in a release
 - **arm64 support** — packaging and wrapper binary for Apple Silicon / Raspberry Pi
-- **AutoEQ** — per-headphone parametric EQ from autoeq.app, with an EQ Studio panel in Settings (engine package ready; not yet wired into playback or the UI)
-- **Cavern** — lossless Dolby Atmos binaural rendering through CavernPipeServer, opt-in via `scripts/install-cavern.sh` (engine package ready; not yet wired into playback)
 
 ## Requirements
 
@@ -222,7 +220,7 @@ Windows integration:
 - **Discord Rich Presence** over the Windows named pipe.
 
 > [!NOTE]
-> Not in the release yet: lossless/ALAC on Windows (it is in the nightly builds, announced in the Discord server's nightly channel; the [`nightly`](https://github.com/Kapy2003/Kapple_Music/tree/nightly) branch builds it) and Cavern (Atmos JOC) rendering.
+> Not in the release yet: lossless/ALAC on Windows (it is in the nightly builds, announced in the Discord server's nightly channel; the [`nightly`](https://github.com/Kapy2003/Kapple_Music/tree/nightly) branch builds it).
 
 ### GNOME
 
@@ -410,7 +408,6 @@ Kapple_Music/
 │   │   ├── prefetch/          Background pre-warm scheduler
 │   │   ├── export/            Track and music-video export
 │   │   ├── library/           Encrypted local library cache
-│   │   ├── autoeq/ ffmpeg/ cavern/   Headphone EQ and binaural (Atmos) rendering
 │   │   └── archtest/          Import-boundary tests
 │   └── utils/                 aacstream, alacstream, ampapi, lyrics, mvlabel, config
 ├── drm/                       DRM library (libdrm_client.so)
@@ -425,7 +422,7 @@ Kapple_Music/
 ├── scripts/                   build-installer.sh, build-flatpak.sh, build-engine.sh,
 │                              build-renderer.sh, bundle-vlc.sh, build-ffmpeg.sh, clean.sh,
 │                              build-windows.ps1, build-ffmpeg-windows.sh, check-glibc.sh,
-│                              repack-appimage.sh, install-cavern.sh, fetch-fairplay-libs.sh
+│                              repack-appimage.sh, fetch-fairplay-libs.sh
 ├── verification/              API schema, QA console, benchmark and test harnesses
 ├── releases/                  Release notes (one file per version)
 ├── assets/                    Screenshots and tray icon
@@ -463,8 +460,6 @@ Questions, bug reports, feature requests and polls live on the [Kapple Music Dis
 - [mp4ff](https://github.com/Eyevinn/mp4ff) (via the itouakirai fork) and [go-mp4tag](https://github.com/zhaarey/go-mp4tag) — MP4 parsing and tagging
 - [grafov/m3u8](https://github.com/grafov/m3u8) — HLS playlists
 - [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) — the encrypted library cache
-- [AutoEQ](https://autoeq.app) — headphone correction data
-- [Cavern](https://github.com/VoidXH/Cavern) — optional Dolby Atmos binaural rendering
 
 **Electron app**
 - [mpris-service](https://github.com/dbkr/mpris-service) — MPRIS2 over D-Bus

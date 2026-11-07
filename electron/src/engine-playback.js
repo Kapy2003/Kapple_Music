@@ -41,8 +41,8 @@ let _accountNote = null;       // { text, error } shown once under the account r
 let _pendingCredentials = null; // kept until Apple accepts the sign-in, then saved
 function _accountSheet() {
     return _accountSheetInstance ??= createAccountSheet({
-        savedEmail: () => (window.kappleBridge || window.adamBridge)?.drmSavedEmail?.() ?? '',
-        openUrl: (url) => (window.kappleBridge || window.adamBridge)?.openExternal?.(url),
+        savedEmail: () => window.kappleBridge?.drmSavedEmail?.() ?? '',
+        openUrl: (url) => window.kappleBridge?.openExternal?.(url),
         signIn: async (email, password, remember) => {
             const r = await fetch(`${ENGINE}/api/v1/drm/authenticate`, {
                 method: 'POST',
@@ -68,7 +68,7 @@ function _accountSheet() {
         onDone: () => {
             // Saved via safeStorage only once Apple accepted them, so the engine can sign in
             // again on its own after a restart; an abandoned sign-in leaves nothing behind.
-            if (_pendingCredentials) (window.kappleBridge || window.adamBridge)?.drmSaveCredentials(_pendingCredentials).catch(() => {});
+            if (_pendingCredentials) window.kappleBridge?.drmSaveCredentials(_pendingCredentials).catch(() => {});
             _pendingCredentials = null;
             _onAccountSignedIn?.();
         },
@@ -77,7 +77,7 @@ function _accountSheet() {
             // and forget saved credentials, so the next launch does not sign in on its own.
             _pendingCredentials = null;
             fetch(`${ENGINE}/api/v1/drm/logout`, { method: 'POST' }).catch(() => {});
-            (window.kappleBridge || window.adamBridge)?.drmClearCredentials({ reload: false }).catch(() => {});
+            window.kappleBridge?.drmClearCredentials({ reload: false }).catch(() => {});
             _onAccountSignedIn?.();
         },
     });
@@ -100,7 +100,7 @@ const ENGINE = window._kappleEngineURL || 'https://127.0.0.1:20025';
 // HTTPS origin for MV <video src> (engine serves TLS on the same port).
 // A real HTTPS origin avoids the mixed-content block AND the custom-protocol seek bug
 // (electron#38749) → Chrome's native byte-range seeking works.
-const _ADAM_DEBUG = !!((window.kappleBridge || window.adamBridge)?.isDev || (window.kappleBridge || window.adamBridge)?.debug) || localStorage.getItem('_ADAM_DEBUG') === '1';
+const _DEBUG = false;
 
 // ── Last.fm API credentials ────────────────────────────────────────────────────
 // Last.fm's API guidelines for native desktop applications require the key and
@@ -204,7 +204,7 @@ navigator.getBattery?.().then(bat => {
 // Read the system power profile via Electron IPC at startup and again on window
 // focus/visibility (power-profiles-daemon responds to a GUI toggle made elsewhere).
 ;(function _pollSysPowerProfile() {
-    const fetch = () => (window.kappleBridge || window.adamBridge)?.getPowerProfile()
+    const fetch = () => window.kappleBridge?.getPowerProfile()
         .then(_applySysPowerProfile).catch(() => {});
     fetch();
     // Event-driven: re-read when the window becomes visible/focused, not on a timer.
@@ -974,7 +974,7 @@ function installMKSeekInterceptor(mk) {
                 }
                 console.log(`[Kapple Music VLC seek] ↺ UNFREEZE  uiPos=${_vlcPosMs}ms  postSeek=${_vlcPostSeek}`);
                 // Emit Seeked signal so MPRIS clients re-anchor their seek bar.
-                (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ position: _vlcPosMs * 1000, seeked: true });
+                window.kappleBridge?.mprisUpdate?.({ position: _vlcPosMs * 1000, seeked: true });
             }, T().debounce);
         } else if (_activeMvControls) {
             // MV: drive seek through _activeMvControls (mode-aware: myVid in MSE, mkAudio in WC).
@@ -1020,12 +1020,12 @@ setInterval(() => {
     if (_vlcMode) return;
     if (_activeMvControls) {
         if (_activeMvControls.paused) return;
-        (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ position: Math.round(_activeMvControls.currentTime * 1000) * 1000 });
+        window.kappleBridge?.mprisUpdate?.({ position: Math.round(_activeMvControls.currentTime * 1000) * 1000 });
         return;
     }
     const a = getMKAudio();
     if (!a || a.paused || !Number.isFinite(a.currentTime) || a.currentTime <= 0) return;
-    (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ position: Math.round(a.currentTime * 1000) * 1000 }); // ms → µs
+    window.kappleBridge?.mprisUpdate?.({ position: Math.round(a.currentTime * 1000) * 1000 }); // ms → µs
 }, 1000);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1322,7 +1322,7 @@ function showQualityBadge(codec, sampleRate, bitDepth, spatialAudio) {
         if (badge) badge.style.display = 'none';
         document.getElementById('kapple-quality-popup')?.style && (document.getElementById('kapple-quality-popup').style.display = 'none');
         window._syncNpBadge?.();
-        (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ qualityBadge: null });
+        window.kappleBridge?.mprisUpdate?.({ qualityBadge: null });
         return;
     }
 
@@ -1388,7 +1388,7 @@ function showQualityBadge(codec, sampleRate, bitDepth, spatialAudio) {
     window._syncNpBadge?.();
 
     // Mirror badge to miniplayer via MPRIS channel (cheapest path — no new IPC channel).
-    (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ qualityBadge: { codec, sampleRate, bitDepth, spatialAudio } });
+    window.kappleBridge?.mprisUpdate?.({ qualityBadge: { codec, sampleRate, bitDepth, spatialAudio } });
 }
 
 // ── Now Playing overlay quality badge (fullscreen lyrics + vertical panel) ───
@@ -3865,7 +3865,7 @@ function _vlcUpdatePosition(posMs, state, mkAudio) {
     if (_vlcPosMs !== prevPos) mkAudio.dispatchEvent(new Event('timeupdate'));
     // Update MPRIS position every ~1s (every 4 ticks × 250ms).
     if (++_vlcTickCount % 4 === 0) {
-        (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ position: _vlcPosMs * 1000 }); // ms → µs
+        window.kappleBridge?.mprisUpdate?.({ position: _vlcPosMs * 1000 }); // ms → µs
     }
     // Burst-log every tick for 20 ticks (5s) after a seek.
     if (_seekBurstLog > 0) {
@@ -5210,7 +5210,7 @@ let _queueHistory = [];
 // Load from encrypted store (async). Falls back to legacy localStorage on first run.
 async function _histLoadAsync() {
     try {
-        const raw = await (window.kappleBridge || window.adamBridge)?.storeRead(_HIST_KEY);
+        const raw = await window.kappleBridge?.storeRead(_HIST_KEY);
         if (raw) { _queueHistory = JSON.parse(raw); return; }
     } catch (_) {}
     // Migration: read legacy plaintext localStorage and re-save encrypted
@@ -5218,7 +5218,7 @@ async function _histLoadAsync() {
         const legacy = localStorage.getItem(_HIST_KEY);
         if (legacy) {
             _queueHistory = JSON.parse(legacy);
-            await (window.kappleBridge || window.adamBridge)?.storeWrite(_HIST_KEY, legacy);
+            await window.kappleBridge?.storeWrite(_HIST_KEY, legacy);
             localStorage.removeItem(_HIST_KEY);
         }
     } catch (_) {}
@@ -5226,7 +5226,7 @@ async function _histLoadAsync() {
 
 async function _histSaveAsync() {
     try {
-        await (window.kappleBridge || window.adamBridge)?.storeWrite(_HIST_KEY, JSON.stringify(_queueHistory));
+        await window.kappleBridge?.storeWrite(_HIST_KEY, JSON.stringify(_queueHistory));
     } catch (_) {}
 }
 
@@ -5265,7 +5265,7 @@ function _histPush(item) {
 
 function _histClear() {
     _queueHistory = [];
-    (window.kappleBridge || window.adamBridge)?.storeDelete(_HIST_KEY).catch(() => {});
+    window.kappleBridge?.storeDelete(_HIST_KEY).catch(() => {});
     _histRender();
 }
 
@@ -5320,12 +5320,12 @@ function _resumeMark() {
 async function _resumeFlush() {
     if (!_resumeDirty || !_resumeState) return;
     _resumeDirty = false;
-    try { await (window.kappleBridge || window.adamBridge)?.storeWrite(_RESUME_KEY, JSON.stringify(_resumeState)); } catch (_) {}
+    try { await window.kappleBridge?.storeWrite(_RESUME_KEY, JSON.stringify(_resumeState)); } catch (_) {}
 }
 
 function _resumeClear() {
     _resumeState = null; _resumeDirty = false;
-    (window.kappleBridge || window.adamBridge)?.storeDelete(_RESUME_KEY).catch(() => {});
+    window.kappleBridge?.storeDelete(_RESUME_KEY).catch(() => {});
 }
 
 function _resumeShowChip(mk, saved) {
@@ -5423,7 +5423,7 @@ async function _resumePlay(mk, saved) {
 
 async function _resumeSetup(mk) {
     try {
-        const raw = await (window.kappleBridge || window.adamBridge)?.storeRead('resumeEnabled');
+        const raw = await window.kappleBridge?.storeRead('resumeEnabled');
         if (raw === 'false' || raw === false) _resumeEnabled = false;
     } catch (_) {}
     // Save hooks are always installed; _resumeMark no-ops when disabled.
@@ -5433,7 +5433,7 @@ async function _resumeSetup(mk) {
     document.addEventListener('visibilitychange', () => { if (document.hidden) _resumeFlush(); });
     // Main process sends this just before quitting — flush immediately so the
     // 300ms window in before-quit is enough for the IPC write to land in _storeCache.
-    (window.kappleBridge || window.adamBridge)?.onFlushAndQuit?.(() => { _resumeMark(); _resumeFlush(); });
+    window.kappleBridge?.onFlushAndQuit?.(() => { _resumeMark(); _resumeFlush(); });
     const audio = getMKAudio();
     if (audio) {
         audio.addEventListener('timeupdate', _resumeMark);       // in-memory only
@@ -5441,7 +5441,7 @@ async function _resumeSetup(mk) {
     }
     if (!_resumeEnabled) return;
     let saved = null;
-    try { const raw = await (window.kappleBridge || window.adamBridge)?.storeRead(_RESUME_KEY); if (raw) saved = JSON.parse(raw); } catch (_) {}
+    try { const raw = await window.kappleBridge?.storeRead(_RESUME_KEY); if (raw) saved = JSON.parse(raw); } catch (_) {}
     if (!saved?.adamId) return;
     if (Date.now() - (saved.savedAt || 0) > _RESUME_MAX_AGE_MS) { _resumeClear(); return; }
     // Offer resume when there's a real queue to restore (>1 track) OR a
@@ -5516,11 +5516,11 @@ async function _deepLinkOpen(mk, intent) {
 function _authStateSetup(mk) {
     const report = async () => {
         const signedIn = mk.authorizationStatus === 3;
-        (window.kappleBridge || window.adamBridge)?.authState?.(signedIn);
+        window.kappleBridge?.authState?.(signedIn);
         // The body's mode stamp selects the mode-specific blur styling; keep it in step.
         let mode = 'blur';
         if (signedIn) {
-            try { mode = (await (window.kappleBridge || window.adamBridge)?.getPrefs?.())?.themeMode || 'accent'; } catch (_) { mode = 'accent'; }
+            try { mode = (await window.kappleBridge?.getPrefs?.())?.themeMode || 'accent'; } catch (_) { mode = 'accent'; }
         }
         document.body?.setAttribute('data-kapple-mode', mode);
     };
@@ -5529,13 +5529,13 @@ function _authStateSetup(mk) {
 }
 
 function _deepLinkSetup(mk) {
-    (window.kappleBridge || window.adamBridge)?.onOpenUrl?.((intent) => {
+    window.kappleBridge?.onOpenUrl?.((intent) => {
         _deepLinkOpen(mk, intent).catch(() => {});
     });
 }
 
 function _discordUpdateNow() {
-    if (!_discordEnabled || !(window.kappleBridge || window.adamBridge)?.discordUpdate) return;
+    if (!_discordEnabled || !window.kappleBridge?.discordUpdate) return;
     const item = _mkInstance?.nowPlayingItem;
     if (!item || !_currentAssetId) return;
     const a = item.attributes ?? {};
@@ -5551,7 +5551,7 @@ function _discordUpdateNow() {
     const slug     = (a.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'track';
     const appleUrl = `https://music.apple.com/${sf}/${itemType}/${slug}/${_currentAssetId}`;
 
-    (window.kappleBridge || window.adamBridge).discordUpdate({
+    window.kappleBridge.discordUpdate({
         name:        a.name || '',
         artist:      a.artistName || '',
         album:       a.albumName || '',
@@ -5566,7 +5566,7 @@ function _discordUpdateNow() {
 
 async function _discordSetup() {
     try {
-        const raw = await (window.kappleBridge || window.adamBridge)?.storeRead('discordEnabled');
+        const raw = await window.kappleBridge?.storeRead('discordEnabled');
         _discordEnabled = (raw === 'true' || raw === true);
     } catch (_) {}
     const audio = getMKAudio();
@@ -5588,11 +5588,11 @@ let _lbConnected     = false;
 let _scrobbleTimer   = null; // single per-track timer feeding all connected services
 
 async function _lastfmRefreshStatus() {
-    try { const s = await (window.kappleBridge || window.adamBridge)?.lastfmStatus(); _lastfmConnected = !!s?.connected; return s; }
+    try { const s = await window.kappleBridge?.lastfmStatus(); _lastfmConnected = !!s?.connected; return s; }
     catch (_) { return null; }
 }
 async function _lbRefreshStatus() {
-    try { const s = await (window.kappleBridge || window.adamBridge)?.lbStatus(); _lbConnected = !!s?.connected; return s; }
+    try { const s = await window.kappleBridge?.lbStatus(); _lbConnected = !!s?.connected; return s; }
     catch (_) { return null; }
 }
 
@@ -5613,8 +5613,8 @@ function _scrobbleOnTrackChange() {
         albumArtist: a.albumArtistName || a.artistName || '',
         duration:    durSec || undefined,
     };
-    if (_lastfmConnected) (window.kappleBridge || window.adamBridge)?.lastfmNowPlaying?.(meta);
-    if (_lbConnected)     (window.kappleBridge || window.adamBridge)?.lbNowPlaying?.(meta);
+    if (_lastfmConnected) window.kappleBridge?.lastfmNowPlaying?.(meta);
+    if (_lbConnected)     window.kappleBridge?.lbNowPlaying?.(meta);
     if (durSec && durSec < 30) return; // don't scrobble tracks under 30s
     const thresholdSec = durSec ? Math.min(240, durSec / 2) : 60;
     const startedAt = Date.now();
@@ -5622,8 +5622,8 @@ function _scrobbleOnTrackChange() {
         if (_scrobbleTimer !== myTimer) return;
         _scrobbleTimer = null;
         const scrob = { ...meta, timestamp: Math.floor(startedAt / 1000) };
-        if (_lastfmConnected) (window.kappleBridge || window.adamBridge)?.lastfmScrobble?.(scrob);
-        if (_lbConnected)     (window.kappleBridge || window.adamBridge)?.lbScrobble?.(scrob);
+        if (_lastfmConnected) window.kappleBridge?.lastfmScrobble?.(scrob);
+        if (_lbConnected)     window.kappleBridge?.lbScrobble?.(scrob);
     }, thresholdSec * 1000);
     _scrobbleTimer = myTimer;
 }
@@ -5763,7 +5763,7 @@ function _scSetEnabled(on) {
 
 async function _scSetup() {
     try {
-        const raw = await (window.kappleBridge || window.adamBridge)?.storeRead('soundCheckEnabled');
+        const raw = await window.kappleBridge?.storeRead('soundCheckEnabled');
         _soundCheckEnabled = (raw === 'true' || raw === true);
     } catch (_) {}
 }
@@ -5999,19 +5999,19 @@ function _xfFadeOut(audio, remainingSec, forceDur) {
 
 function _xfSetMode(mode) {
     _crossfadeMode = mode;
-    (window.kappleBridge || window.adamBridge)?.setTweak('crossfade-mode', mode);
+    window.kappleBridge?.setTweak('crossfade-mode', mode);
     _xfRecompute();
 }
 
 function _xfSetManualSec(sec) {
     _crossfadeManual = Math.max(0, Math.min(12, sec));
-    (window.kappleBridge || window.adamBridge)?.setTweak('crossfade-sec', _crossfadeManual);
+    window.kappleBridge?.setTweak('crossfade-sec', _crossfadeManual);
     if (_crossfadeMode === 'manual') _xfRecompute();
 }
 
 async function _xfSetup() {
     try {
-        const prefs = await (window.kappleBridge || window.adamBridge)?.getPrefs();
+        const prefs = await window.kappleBridge?.getPrefs();
         const v = Number(prefs?.['crossfade-sec']);
         if (Number.isFinite(v) && v >= 0) _crossfadeManual = Math.min(12, v);
         // Mode: explicit pref wins; else infer from a legacy manual-seconds value.
@@ -6165,14 +6165,14 @@ function _installMediaHotkeys() {
 }
 
 async function _hotkeySaveBindings() {
-    try { await (window.kappleBridge || window.adamBridge)?.storeWrite('hotkeyBindings', JSON.stringify(_hotkeyBindings)); } catch (_) {}
+    try { await window.kappleBridge?.storeWrite('hotkeyBindings', JSON.stringify(_hotkeyBindings)); } catch (_) {}
 }
 
 async function _hotkeysSetup() {
     try {
-        const raw = await (window.kappleBridge || window.adamBridge)?.storeRead('hotkeysEnabled');
+        const raw = await window.kappleBridge?.storeRead('hotkeysEnabled');
         if (raw === 'false' || raw === false) _hotkeysEnabled = false;
-        const b = await (window.kappleBridge || window.adamBridge)?.storeRead('hotkeyBindings');
+        const b = await window.kappleBridge?.storeRead('hotkeyBindings');
         if (b) { const parsed = JSON.parse(b); for (const a of _HOTKEY_ACTIONS) if (parsed[a.id]) _hotkeyBindings[a.id] = parsed[a.id]; }
     } catch (_) {}
     _installMediaHotkeys();
@@ -6320,7 +6320,7 @@ async function setupQueueHistory(mk) {
 
     // Load history-enabled pref and history from encrypted store before first render.
     try {
-        const pref = await (window.kappleBridge || window.adamBridge)?.storeRead('historyEnabled');
+        const pref = await window.kappleBridge?.storeRead('historyEnabled');
         if (pref !== null && pref !== undefined) _histEnabled = pref !== 'false' && pref !== false;
     } catch (_) {}
     await _histLoadAsync();
@@ -6413,7 +6413,7 @@ async function setup() {
     }
 
     // Push saved cache config to engine now that it's up; also load quality pref.
-    (window.kappleBridge || window.adamBridge)?.getPrefs().then(p => {
+    window.kappleBridge?.getPrefs().then(p => {
         if (p['streaming-quality']) _streamingQuality = p['streaming-quality'];
         // lossless-enabled=false overrides streaming-quality → force AAC regardless.
         if (p['lossless-enabled'] === false) _streamingQuality = 'high-quality';
@@ -6939,15 +6939,15 @@ async function setup() {
             ci = _sessionContainers.length - 1;
         }
         const ii = Math.max(0, _sessionContainers[ci].items.indexOf(target));
-        if (_ADAM_DEBUG) console.log(`[MK-DBG] ${label} → owned change: ${items.length} track(s) ci=${ci} ii=${ii} target=${target}`);
+        if (_DEBUG) console.log(`[MK-DBG] ${label} → owned change: ${items.length} track(s) ci=${ci} ii=${ii} target=${target}`);
         if (closeGate) closeGate();
         // _aacCloseGate sets _allowCDNTransition=false, but changeToMediaAtIndex needs
         // the CDN gate open so MK can set audio.src=CDN_URL and advance its state
         // machine to fire NPIDF. Re-open it here; handleTrackChange will close it.
         _allowCDNTransition = true;
         return _kappleGoto(ci, ii)
-            .then(()  => _ADAM_DEBUG && console.log(`[MK-DBG] ${label} → owned change dispatched`))
-            .catch(err => _ADAM_DEBUG && console.log(`[MK-DBG] ${label} → owned change failed:`, err?.message || err));
+            .then(()  => _DEBUG && console.log(`[MK-DBG] ${label} → owned change dispatched`))
+            .catch(err => _DEBUG && console.log(`[MK-DBG] ${label} → owned change failed:`, err?.message || err));
     }
 
     // Normalise a descriptor's startWith.id to a catalog song ID.
@@ -7045,7 +7045,7 @@ async function setup() {
     }
 
     function sendMprisMetadata(item) {
-        if (!(window.kappleBridge || window.adamBridge)?.mprisUpdate || !item) return;
+        if (!window.kappleBridge?.mprisUpdate || !item) return;
         const a = item.attributes ?? {};
         const artTemplate = a.artwork?.url ?? '';
         const artUrl = artTemplate.replace('{w}', '1000').replace('{h}', '1000');
@@ -7074,7 +7074,7 @@ async function setup() {
         // shows the heart immediately (bidirectional with _toggleLove).
         const iid = _extractItemId(item);
         if (iid && iid in _lovedState) meta['xesam:userRating'] = _lovedState[iid] ? 1 : 0;
-        (window.kappleBridge || window.adamBridge).mprisUpdate({
+        window.kappleBridge.mprisUpdate({
             metadata: meta,
             shuffle: mk.shuffleMode === 1,
         });
@@ -7087,7 +7087,7 @@ async function setup() {
         // jumping: on fresh track starts _vlcPosMs is 0/stale until VLC reports
         // its first tick, which causes the seek bar to visibly skip ahead.
         const seeked = isResume && status === 'Playing' && _vlcPosMs > 0;
-        (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ status, position: _mprisPosMs() * 1000, seeked });
+        window.kappleBridge?.mprisUpdate?.({ status, position: _mprisPosMs() * 1000, seeked });
     }
 
     // Handle MPRIS commands from system media controls / media keys.
@@ -7098,7 +7098,7 @@ async function setup() {
     // to the mini window.
     function _pushMiniState() {
         const a = getMKAudio();
-        (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({
+        window.kappleBridge?.mprisUpdate?.({
             volume:  a && Number.isFinite(a.volume) ? Math.round(a.volume * 100) : 100,
             repeat:  mk.repeatMode ?? 0,
             shuffle: mk.shuffleMode === 1,
@@ -7108,28 +7108,28 @@ async function setup() {
     _pushMiniStateRef = _pushMiniState;
 
     // Main asks for a full refresh when the mini player opens.
-    (window.kappleBridge || window.adamBridge)?.onMiniSync?.(() => {
+    window.kappleBridge?.onMiniSync?.(() => {
         try {
             if (mk.nowPlayingItem) sendMprisMetadata(mk.nowPlayingItem);
             _pushMiniState();
             const playing = mk.playbackState === window.MusicKit?.PlaybackStates?.playing;
-            (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ status: playing ? 'Playing' : 'Paused', position: _mprisPosMs() * 1000 });
+            window.kappleBridge?.mprisUpdate?.({ status: playing ? 'Playing' : 'Paused', position: _mprisPosMs() * 1000 });
         } catch (_) {}
     });
 
-    (window.kappleBridge || window.adamBridge)?.onMprisCmd?.((cmd) => {
+    window.kappleBridge?.onMprisCmd?.((cmd) => {
         if (cmd && typeof cmd === 'object') {
             if (cmd.type === 'seek') {
                 // MPRIS Seek is a relative delta in µs; deltaMs is already in ms.
                 const targetMs = Math.max(0, _mprisPosMs() + cmd.deltaMs);
                 mk.seekToTime(targetMs / 1000);
                 // Spec: emit Seeked after the call (position in µs).
-                (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ position: targetMs * 1000, seeked: true });
+                window.kappleBridge?.mprisUpdate?.({ position: targetMs * 1000, seeked: true });
             } else if (cmd.type === 'setPosition') {
                 // MPRIS SetPosition: absolute ms (converted from µs by main.mjs).
                 const targetMs = Math.max(0, cmd.ms);
                 mk.seekToTime(targetMs / 1000);
-                (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ position: targetMs * 1000, seeked: true });
+                window.kappleBridge?.mprisUpdate?.({ position: targetMs * 1000, seeked: true });
             } else if (cmd.type === 'setLoopStatus') {
                 // MPRIS LoopStatus string → MusicKit repeatMode (0=none,1=one,2=all).
                 const loopMap = { 'None': 0, 'Track': 1, 'Playlist': 2 };
@@ -7167,10 +7167,10 @@ async function setup() {
     });
 
     mk.addEventListener('shuffleModeDidChange', () => {
-        (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ shuffle: mk.shuffleMode === 1 });
+        window.kappleBridge?.mprisUpdate?.({ shuffle: mk.shuffleMode === 1 });
     });
     mk.addEventListener('repeatModeDidChange', () => {
-        (window.kappleBridge || window.adamBridge)?.mprisUpdate?.({ repeat: mk.repeatMode ?? 0 });
+        window.kappleBridge?.mprisUpdate?.({ repeat: mk.repeatMode ?? 0 });
     });
 
     // Stable ID from any MusicKit MediaItem regardless of whether the item came
@@ -7335,7 +7335,7 @@ async function setup() {
             // setQueue — this ensures MSE has claimed mkAudio before MK touches it.
             _directPlayPromise = aacCatalogId ? _triggerDirectPlay(aacCatalogId, mk) : null;
             if (_directPlayPromise) _directPlayPromise.catch(() => {});
-            if (_ADAM_DEBUG) console.log('[Kapple Music click] external play in AAC mode — opening CDN gate'
+            if (_DEBUG) console.log('[Kapple Music click] external play in AAC mode — opening CDN gate'
                 + ' playbackState=' + mk.playbackState
                 + ' nowPlaying=' + (mk.nowPlayingItem?.attributes?.name || 'null')
                 + ' catalogId=' + (aacCatalogId || 'not-found')
@@ -7377,7 +7377,7 @@ async function setup() {
             const _aacOwnedGoto = (ids, startId, label) => _ownedGoto(ids, startId, label, _aacCloseGate);
             mk.setQueue = (...a) => {
                 const desc = a[0];
-                if (_ADAM_DEBUG) console.log('[MK-DBG AAC] mk.setQueue() args=' + JSON.stringify(a).slice(0, 400));
+                if (_DEBUG) console.log('[MK-DBG AAC] mk.setQueue() args=' + JSON.stringify(a).slice(0, 400));
 
                 // Library playlist — borrowed from the VLC path, which was the only branch
                 // consuming _pendingPlaylistFetch. The AAC click handler has always started
@@ -7386,7 +7386,7 @@ async function setup() {
                 // and stalled. Serve it from the engine DB and own the change instead.
                 if (desc?.playlists && desc?.startWith?.id) {
                     const startWithLid = desc.startWith?.id ?? null;
-                    if (_ADAM_DEBUG) console.log('[MK-DBG AAC] playlists → resolving pre-fetched tracks, startWithLid=' + startWithLid);
+                    if (_DEBUG) console.log('[MK-DBG AAC] playlists → resolving pre-fetched tracks, startWithLid=' + startWithLid);
                     // Use _pendingPlaylistFetch directly so we keep the lid→cid mapping
                     // needed to resolve opaque library item IDs like "i.XXXX".
                     const fetchResult = _pendingPlaylistFetch
@@ -7406,18 +7406,18 @@ async function setup() {
                                 const match = tracks.find(t => t.lid === startWithLid || t.lid === startWithLid.replace(/^[a-z]\./, ''));
                                 startCid = match?.cid ?? null;
                             }
-                            if (_ADAM_DEBUG) console.log('[MK-DBG AAC] playlists → ' + catalogIds.length + ' tracks, startCid=' + startCid);
+                            if (_DEBUG) console.log('[MK-DBG AAC] playlists → ' + catalogIds.length + ' tracks, startCid=' + startCid);
                             return _aacOwnedGoto(catalogIds, startCid, 'playlist/local');
                         }
                         // Cache cold and the engine's live fetch came back empty — nothing to
                         // build a container from, so fall back to Apple's slow-but-reliable path.
-                        if (_ADAM_DEBUG) console.log('[MK-DBG AAC] playlists → cache cold, passthrough');
+                        if (_DEBUG) console.log('[MK-DBG AAC] playlists → cache cold, passthrough');
                         if (_externalPlayGateTimer) clearTimeout(_externalPlayGateTimer);
-                        _externalPlayGateTimer = setTimeout(() => { if (_ADAM_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 45000);
+                        _externalPlayGateTimer = setTimeout(() => { if (_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 45000);
                         const p = _aacMkApiSaved.setQueue.apply(mk, a);
                         if (p?.then) p.then(
-                            () => _ADAM_DEBUG && console.log('[MK-DBG AAC] playlists → passthrough resolved'),
-                            err => { if (_ADAM_DEBUG) console.log('[MK-DBG AAC] playlists → passthrough rejected:', err?.message || err); _aacCloseGate(); }
+                            () => _DEBUG && console.log('[MK-DBG AAC] playlists → passthrough resolved'),
+                            err => { if (_DEBUG) console.log('[MK-DBG AAC] playlists → passthrough rejected:', err?.message || err); _aacCloseGate(); }
                         );
                         return p;
                     });
@@ -7427,14 +7427,14 @@ async function setup() {
                 if (desc?.albums?.length === 1 && typeof desc.albums[0] === 'string' && desc.albums[0].startsWith('l.')) {
                     const albumId = desc.albums[0];
                     const startWithLid = desc.startWith?.id ?? null;
-                    if (_ADAM_DEBUG) console.log('[MK-DBG AAC] albums → querying local cache for ' + albumId);
+                    if (_DEBUG) console.log('[MK-DBG AAC] albums → querying local cache for ' + albumId);
                     const fetchPromise = fetch(`${ENGINE}/api/v1/library/albums/${encodeURIComponent(albumId)}/tracks`)
                         .then(r => r.ok ? r.json() : null).catch(() => null);
                     return Promise.race([fetchPromise, new Promise(res => setTimeout(() => res(null), 3000))]).then(result => {
                         const tracks = result?.tracks || [];
                         const catalogIds = tracks.map(t => t.cid).filter(id => id && /^\d{6,}$/.test(id));
                         if (catalogIds.length > 0) {
-                            if (_ADAM_DEBUG) console.log('[MK-DBG AAC] albums → local cache: ' + catalogIds.length + ' tracks');
+                            if (_DEBUG) console.log('[MK-DBG AAC] albums → local cache: ' + catalogIds.length + ' tracks');
                             const startCid = startWithLid
                                 ? (tracks.find(t => t.lid === startWithLid) || {}).cid
                                 : (_pendingExternalClickCatalogId || null);
@@ -7445,9 +7445,9 @@ async function setup() {
                         // Android's queryItemsFromAlbum(albumId) which hits SVMediaLibrary or falls
                         // back to a direct /v1/me/library/albums/{id}/tracks fetch.
                         // Avoids the 30-40s delay of setQueue({albums:[...]}) when playbackState=2.
-                        if (_ADAM_DEBUG) console.log('[MK-DBG AAC] albums → cache cold, fetching tracks via MK REST');
+                        if (_DEBUG) console.log('[MK-DBG AAC] albums → cache cold, fetching tracks via MK REST');
                         if (_externalPlayGateTimer) clearTimeout(_externalPlayGateTimer);
-                        _externalPlayGateTimer = setTimeout(() => { if (_ADAM_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 20000);
+                        _externalPlayGateTimer = setTimeout(() => { if (_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 20000);
 
                         const mkInst = window.MusicKit?.getInstance?.();
                         const directFetch = mkInst
@@ -7462,7 +7462,7 @@ async function setup() {
                             }).filter(id => id && /^\d{6,}$/.test(id));
 
                             if (directIds.length > 0) {
-                                if (_ADAM_DEBUG) console.log('[MK-DBG AAC] albums → REST fetch: ' + directIds.length + ' tracks (store for next time)');
+                                if (_DEBUG) console.log('[MK-DBG AAC] albums → REST fetch: ' + directIds.length + ' tracks (store for next time)');
                                 // Cache the result in engine DB so next click is instant
                                 const cacheTracks = items.map(item => ({
                                     id: item.id,
@@ -7486,13 +7486,13 @@ async function setup() {
 
                             // REST also empty (no auth yet) — last resort: Apple's slow setQueue path
                             const _coldTimeout = (mk.playbackState === 2) ? 65000 : 45000;
-                            if (_ADAM_DEBUG) console.log('[MK-DBG AAC] albums → REST empty, last-resort Apple setQueue (timeout=' + _coldTimeout / 1000 + 's)');
+                            if (_DEBUG) console.log('[MK-DBG AAC] albums → REST empty, last-resort Apple setQueue (timeout=' + _coldTimeout / 1000 + 's)');
                             if (_externalPlayGateTimer) clearTimeout(_externalPlayGateTimer);
-                            _externalPlayGateTimer = setTimeout(() => { if (_ADAM_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout after setQueue)'); _aacCloseGate(); }, _coldTimeout);
+                            _externalPlayGateTimer = setTimeout(() => { if (_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout after setQueue)'); _aacCloseGate(); }, _coldTimeout);
                             const p = _aacMkApiSaved.setQueue.apply(mk, a);
                             if (p?.then) p.then(
-                                () => _ADAM_DEBUG && console.log('[MK-DBG AAC] setQueue resolved'),
-                                err => { if (_ADAM_DEBUG) console.log('[MK-DBG AAC] setQueue rejected:', err?.message || err); _aacCloseGate(); }
+                                () => _DEBUG && console.log('[MK-DBG AAC] setQueue resolved'),
+                                err => { if (_DEBUG) console.log('[MK-DBG AAC] setQueue rejected:', err?.message || err); _aacCloseGate(); }
                             );
                             return p;
                         });
@@ -7523,9 +7523,9 @@ async function setup() {
                     // retries and eventually succeeds. Pass through to MK for containers.
                     const swType = desc?.startWith?.type;
                     if (swType === 'albums') {
-                        if (_ADAM_DEBUG) console.log('[MK-DBG AAC] startWith type=albums, id=' + startWithId + ' → fetching tracks');
+                        if (_DEBUG) console.log('[MK-DBG AAC] startWith type=albums, id=' + startWithId + ' → fetching tracks');
                         if (_externalPlayGateTimer) clearTimeout(_externalPlayGateTimer);
-                        _externalPlayGateTimer = setTimeout(() => { if (_ADAM_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 20000);
+                        _externalPlayGateTimer = setTimeout(() => { if (_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 20000);
                         const mkInst = window.MusicKit?.getInstance?.();
                         const albumFetch = mkInst
                             ? mkInst.api.music(`/v1/catalog/${mkInst.storefrontId}/albums/${encodeURIComponent(startWithId)}/tracks`, { limit: 100 })
@@ -7534,31 +7534,31 @@ async function setup() {
                         return albumFetch.then(items => {
                             const trackIds = items.map(item => item?.id).filter(id => id && /^\d{6,}$/.test(id));
                             if (trackIds.length > 0) {
-                                if (_ADAM_DEBUG) console.log('[MK-DBG AAC] album resolved: ' + trackIds.length + ' tracks');
+                                if (_DEBUG) console.log('[MK-DBG AAC] album resolved: ' + trackIds.length + ' tracks');
                                 return _aacOwnedGoto(trackIds, trackIds[0], 'albums/catalog');
                             }
-                            if (_ADAM_DEBUG) console.log('[MK-DBG AAC] album fetch empty, passthrough');
+                            if (_DEBUG) console.log('[MK-DBG AAC] album fetch empty, passthrough');
                             const p = _aacMkApiSaved.setQueue.apply(mk, a);
                             if (p?.then) p.then(
-                                () => _ADAM_DEBUG && console.log('[MK-DBG AAC] album passthrough resolved'),
-                                err => { if (_ADAM_DEBUG) console.log('[MK-DBG AAC] album passthrough rejected:', err?.message || err); _aacCloseGate(); }
+                                () => _DEBUG && console.log('[MK-DBG AAC] album passthrough resolved'),
+                                err => { if (_DEBUG) console.log('[MK-DBG AAC] album passthrough rejected:', err?.message || err); _aacCloseGate(); }
                             );
                             return p;
                         });
                     }
                     if (swType === 'playlists') {
-                        if (_ADAM_DEBUG) console.log('[MK-DBG AAC] startWith type=playlists, id=' + startWithId + ' → resolving');
+                        if (_DEBUG) console.log('[MK-DBG AAC] startWith type=playlists, id=' + startWithId + ' → resolving');
                         return _resolvePlaylistCatalogIds().then(catalogIds => {
                             if (catalogIds.length > 1) {
                                 return _aacOwnedGoto(catalogIds, catalogIds[0], 'playlists/startWith');
                             }
-                            if (_ADAM_DEBUG) console.log('[MK-DBG AAC] playlist resolve empty, passthrough');
+                            if (_DEBUG) console.log('[MK-DBG AAC] playlist resolve empty, passthrough');
                             if (_externalPlayGateTimer) clearTimeout(_externalPlayGateTimer);
-                            _externalPlayGateTimer = setTimeout(() => { if (_ADAM_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 45000);
+                            _externalPlayGateTimer = setTimeout(() => { if (_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 45000);
                             const p = _aacMkApiSaved.setQueue.apply(mk, a);
                             if (p?.then) p.then(
-                                () => _ADAM_DEBUG && console.log('[MK-DBG AAC] playlists passthrough resolved'),
-                                err => { if (_ADAM_DEBUG) console.log('[MK-DBG AAC] playlists passthrough rejected:', err?.message || err); _aacCloseGate(); }
+                                () => _DEBUG && console.log('[MK-DBG AAC] playlists passthrough resolved'),
+                                err => { if (_DEBUG) console.log('[MK-DBG AAC] playlists passthrough rejected:', err?.message || err); _aacCloseGate(); }
                             );
                             return p;
                         });
@@ -7580,7 +7580,7 @@ async function setup() {
                     const mkInstAlbum = window.MusicKit?.getInstance?.();
                     if (albumUrlId && mkInstAlbum?.storefrontId) {
                         if (_externalPlayGateTimer) clearTimeout(_externalPlayGateTimer);
-                        _externalPlayGateTimer = setTimeout(() => { if (_ADAM_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 20000);
+                        _externalPlayGateTimer = setTimeout(() => { if (_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)'); _aacCloseGate(); }, 20000);
                         return mkInstAlbum.api.music(`/v1/catalog/${mkInstAlbum.storefrontId}/albums/${encodeURIComponent(albumUrlId)}/tracks`, { limit: 100 })
                             .then(res => res?.data?.data || []).catch(() => [])
                             .then(items => {
@@ -7600,24 +7600,24 @@ async function setup() {
                 // Non-album descriptor — extend safety timer and pass through.
                 if (_externalPlayGateTimer) clearTimeout(_externalPlayGateTimer);
                 _externalPlayGateTimer = setTimeout(() => {
-                    if (_ADAM_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout after setQueue)');
+                    if (_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout after setQueue)');
                     _aacCloseGate();
                 }, 45000);
                 const p = _aacMkApiSaved.setQueue.apply(mk, a);
                 if (p?.then) p.then(
-                    () => _ADAM_DEBUG && console.log('[MK-DBG AAC] setQueue resolved'),
+                    () => _DEBUG && console.log('[MK-DBG AAC] setQueue resolved'),
                     err => {
-                        if (_ADAM_DEBUG) console.log('[MK-DBG AAC] setQueue rejected:', err?.message || err);
+                        if (_DEBUG) console.log('[MK-DBG AAC] setQueue rejected:', err?.message || err);
                         _aacCloseGate();
                     }
                 );
                 return p;
             };
             mk.changeToMediaAtIndex = (idx) => {
-                if (_ADAM_DEBUG) console.log('[MK-DBG AAC] mk.changeToMediaAtIndex(' + idx + ')');
+                if (_DEBUG) console.log('[MK-DBG AAC] mk.changeToMediaAtIndex(' + idx + ')');
                 const p = _aacMkApiSaved.changeToMediaAtIndex.call(mk, idx);
-                if (p?.then) p.then(() => _ADAM_DEBUG && console.log('[MK-DBG AAC] ctmi resolved'),
-                                    err => _ADAM_DEBUG && console.log('[MK-DBG AAC] ctmi rejected:', err?.message || err));
+                if (p?.then) p.then(() => _DEBUG && console.log('[MK-DBG AAC] ctmi resolved'),
+                                    err => _DEBUG && console.log('[MK-DBG AAC] ctmi rejected:', err?.message || err));
                 return p;
             };
 
@@ -7626,10 +7626,10 @@ async function setup() {
             const _aacGateEvts = ['pause','play','playing','waiting','stalled','error','emptied','loadstart','canplay','canplaythrough','ended'];
             const _aacGateEvtHandler = (ev) => {
                 const el = _aacGateAudioEl;
-                if (_ADAM_DEBUG) console.log('[AUDIO-EVT] ' + ev.type + ' paused=' + el?.paused + ' readyState=' + el?.readyState + ' src=' + (el?.src||'').slice(0,60));
+                if (_DEBUG) console.log('[AUDIO-EVT] ' + ev.type + ' paused=' + el?.paused + ' readyState=' + el?.readyState + ' src=' + (el?.src||'').slice(0,60));
             };
             if (_aacGateAudioEl) _aacGateEvts.forEach(t => _aacGateAudioEl.addEventListener(t, _aacGateEvtHandler));
-            const _aacGateStateListener = () => _ADAM_DEBUG && console.log('[MK-DBG] playbackStateDidChange → ' + mk.playbackState + ' nowPlaying=' + (mk.nowPlayingItem?.attributes?.name || 'null'));
+            const _aacGateStateListener = () => _DEBUG && console.log('[MK-DBG] playbackStateDidChange → ' + mk.playbackState + ' nowPlaying=' + (mk.nowPlayingItem?.attributes?.name || 'null'));
             mk.addEventListener('playbackStateDidChange', _aacGateStateListener);
             const _aacGateTracingCleanup = () => {
                 if (_aacGateAudioEl) _aacGateEvts.forEach(t => _aacGateAudioEl.removeEventListener(t, _aacGateEvtHandler));
@@ -7641,7 +7641,7 @@ async function setup() {
             if (_externalPlayGateTimer) clearTimeout(_externalPlayGateTimer);
             // 20s initial timeout; extends to 45s if MK calls setQueue (library auth can be slow).
             _externalPlayGateTimer = setTimeout(() => {
-                if (_ADAM_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)');
+                if (_DEBUG) console.log('[Kapple Music click] AAC CDN gate reset (safety timeout)');
                 _aacCloseGate();
             }, 20000);
             // For MV play buttons inside vertical-video cards: do NOT call setQueue directly.
@@ -7734,7 +7734,7 @@ async function setup() {
                 }
                 // One-shot diagnostic: dump all own + hidden properties of a queue item so we
                 // can check whether MusicKit surfaces playlistItemPersistentId internally.
-                if (_ADAM_DEBUG && qItems?.length && !window._kappleQueueItemDumped) {
+                if (_DEBUG && qItems?.length && !window._kappleQueueItemDumped) {
                     window._kappleQueueItemDumped = true;
                     const it = qItems[0];
                     const allKeys = new Set();
@@ -7761,7 +7761,7 @@ async function setup() {
                     _pendingPlaylistFetch = _prewarmLibraryPlaylist(_pendingPlaylistId);
                 }
             } catch (_) {}
-            if (_ADAM_DEBUG) console.log('[Kapple Music click] external play while VLC active — opening CDN gate'
+            if (_DEBUG) console.log('[Kapple Music click] external play while VLC active — opening CDN gate'
                 + ' playbackState=' + mk.playbackState
                 + ' adamGotoTarget=' + _kappleGotoTarget
                 + ' nowPlaying=' + (mk.nowPlayingItem?.attributes?.name || 'null')
@@ -7815,11 +7815,11 @@ async function setup() {
                                     catalogId = match?.cid ?? null;
                                 }
                                 // Local cache hit — build songs descriptor without touching Apple's CDN setQueue.
-                                if (_ADAM_DEBUG) console.log('[MK-DBG] setQueue → local cache: ' + catalogIds.length + ' tracks, startWith=' + catalogId);
+                                if (_DEBUG) console.log('[MK-DBG] setQueue → local cache: ' + catalogIds.length + ' tracks, startWith=' + catalogId);
                                 const pDesc = {songs: catalogIds};
                                 if (catalogId && catalogIds.includes(catalogId)) pDesc.startWith = {id: catalogId};
                                 const p = _mkApiSaved.setQueue.call(mk, pDesc);
-                                if (p?.then) p.then(() => _ADAM_DEBUG && console.log('[MK-DBG] local cache resolved'), e2 => _ADAM_DEBUG && console.log('[MK-DBG] local cache rejected:', e2?.message || String(e2)));
+                                if (p?.then) p.then(() => _DEBUG && console.log('[MK-DBG] local cache resolved'), e2 => _DEBUG && console.log('[MK-DBG] local cache rejected:', e2?.message || String(e2)));
                                 return p;
                             }
                             // Cache cold (DB empty + engine live-fetch failed/DRM not available).
@@ -7827,9 +7827,9 @@ async function setup() {
                             // ctmi is NOT used here: the CDN gate is open only during VLC mode where
                             // the audio element is synthetic (paused=true, no src). ctmi's stop→load
                             // sequence hangs waiting for element events that never fire → 20s timeout.
-                            if (_ADAM_DEBUG) console.log('[MK-DBG] setQueue → passthrough (cache cold) startWithLid=' + startWithLid);
+                            if (_DEBUG) console.log('[MK-DBG] setQueue → passthrough (cache cold) startWithLid=' + startWithLid);
                             const p = _mkApiSaved.setQueue.apply(mk, a);
-                            if (p?.then) p.then(() => _ADAM_DEBUG && console.log('[MK-DBG] passthrough resolved'), e2 => _ADAM_DEBUG && console.log('[MK-DBG] passthrough rejected:', e2?.message || String(e2)));
+                            if (p?.then) p.then(() => _DEBUG && console.log('[MK-DBG] passthrough resolved'), e2 => _DEBUG && console.log('[MK-DBG] passthrough rejected:', e2?.message || String(e2)));
                             return p;
                         });
                     }
@@ -7940,10 +7940,10 @@ async function setup() {
             const _gateEvts = ['pause','play','playing','waiting','stalled','error','emptied','loadstart','canplay','canplaythrough','ended'];
             const _gateEvtHandler = (ev) => {
                 const el = _gateAudioEl;
-                if (_ADAM_DEBUG) console.log('[AUDIO-EVT] ' + ev.type + ' paused=' + el?.paused + ' readyState=' + el?.readyState + ' src=' + (el?.src||'').slice(0,60));
+                if (_DEBUG) console.log('[AUDIO-EVT] ' + ev.type + ' paused=' + el?.paused + ' readyState=' + el?.readyState + ' src=' + (el?.src||'').slice(0,60));
             };
             if (_gateAudioEl) _gateEvts.forEach(t => _gateAudioEl.addEventListener(t, _gateEvtHandler));
-            const _gateStateListener = () => _ADAM_DEBUG && console.log('[MK-DBG] playbackStateDidChange → ' + mk.playbackState + ' nowPlaying=' + (mk.nowPlayingItem?.attributes?.name || 'null'));
+            const _gateStateListener = () => _DEBUG && console.log('[MK-DBG] playbackStateDidChange → ' + mk.playbackState + ' nowPlaying=' + (mk.nowPlayingItem?.attributes?.name || 'null'));
             mk.addEventListener('playbackStateDidChange', _gateStateListener);
             // Cleanup: call this when the gate closes (success or timeout).
             const _gateTracingCleanup = () => {
@@ -7970,7 +7970,7 @@ async function setup() {
                 }
                 _allowCDNTransition = false;
                 _externalPlayGateTimer = null;
-                if (_ADAM_DEBUG) console.log('[Kapple Music click] CDN gate reset (safety timeout)');
+                if (_DEBUG) console.log('[Kapple Music click] CDN gate reset (safety timeout)');
             }, 20000);
         }
 
@@ -8770,13 +8770,13 @@ setup().catch(e => console.error('[Kapple Music Engine] setup:', e));
         lastSrc = null;
         sync();
     });
-    (window.kappleBridge || window.adamBridge)?.getPrefs?.().then(p => {
+    window.kappleBridge?.getPrefs?.().then(p => {
         if (!document.body) return; // body may not be available during early init
         enabled = p?.artTheme !== false;
         // Stamp data-kapple-mode from prefs so CSS mode-isolation (ghost blur layer
         // suppression) is correct from first paint, before settings are ever opened.
         // "Accented Blur" was removed; a saved artThemeMode is a leftover from it.
-        if (p?.artThemeMode) (window.kappleBridge || window.adamBridge).setTweak('artThemeMode', null);
+        if (p?.artThemeMode) window.kappleBridge.setTweak('artThemeMode', null);
         // Signed-out pages always use the plain blur look (see _authStateSetup).
         const startupMode = p?.signedIn ? (p?.themeMode || 'accent') : 'blur';
         document.body.setAttribute('data-kapple-mode', startupMode);
@@ -8889,7 +8889,7 @@ window.kappleGetQueueInfo = function () {
 // Opens as a native <dialog> (macOS-sheet style).
 // All engine state comes from /api/v1/drm/status — no wrapper IPC.
 (function setupEngineSettings() {
-    if (!(window.kappleBridge || window.adamBridge)) return;
+    if (!window.kappleBridge) return;
 
     const FF = 'font-family:-apple-system,SF Pro Text,system-ui,sans-serif;';
 
@@ -8994,7 +8994,7 @@ window.kappleGetQueueInfo = function () {
             main.textContent = isSignedIn ? 'Signed in' : 'Not signed in';
             if (isSignedIn) {
                 // Which account: the email saved when Apple accepted the sign-in.
-                (window.kappleBridge || window.adamBridge)?.drmSavedEmail?.().then(e => { if (e) main.textContent = `Signed in as ${e}`; }).catch(() => {});
+                window.kappleBridge?.drmSavedEmail?.().then(e => { if (e) main.textContent = `Signed in as ${e}`; }).catch(() => {});
             }
             text.appendChild(main);
             if (!isSignedIn) {
@@ -9061,7 +9061,7 @@ window.kappleGetQueueInfo = function () {
             button.disabled = true; button.textContent = busyText;
             const res = await signOutFlow({
                 engine: ENGINE, scope,
-                clearCredentials: (window.kappleBridge || window.adamBridge)?.drmClearCredentials,
+                clearCredentials: window.kappleBridge?.drmClearCredentials,
             });
             if (res.message) _accountNote = { text: res.message, error: true };
             else if (res.note) _accountNote = { text: res.note, error: false };
@@ -9193,15 +9193,15 @@ window.kappleGetQueueInfo = function () {
         const wrap = document.createElement('div');
         wrap.style.cssText = 'position:relative;display:inline-block;';
         const btn = document.createElement('div');
-        btn.className = "kapple-qdrop-btn';
+        btn.className = 'kapple-qdrop-btn';
         const btnLabel = document.createElement('span');
         btnLabel.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         const chevron = document.createElement('span');
-        chevron.className = "kapple-qdrop-chevron';
+        chevron.className = 'kapple-qdrop-chevron';
         chevron.innerHTML = '&#9660;';
         btn.append(btnLabel, chevron);
         const menu = document.createElement('div');
-        menu.className = "kapple-qdrop-menu';
+        menu.className = 'kapple-qdrop-menu';
         menu.style.cssText += 'display:none;position:absolute;top:calc(100% + 4px);right:0;left:auto;z-index:10;';
         function setOption(value, save) {
             current = value;
@@ -9212,19 +9212,19 @@ window.kappleGetQueueInfo = function () {
                 el.classList.toggle('selected', el.dataset.value === sv);
             });
             if (save) {
-                (window.kappleBridge || window.adamBridge)?.setTweak(prefKey, value);
+                window.kappleBridge?.setTweak(prefKey, value);
                 if (prefKey === 'streaming-quality') _streamingQuality = value;
                 onChange?.(value);
             }
         }
         qualityOpts.forEach(({ value, label }) => {
             const item = document.createElement('div');
-            item.className = "kapple-qdrop-item';
+            item.className = 'kapple-qdrop-item';
             item.dataset.value = value;
             const accent = document.createElement('div');
-            accent.className = "kapple-qdrop-accent';
+            accent.className = 'kapple-qdrop-accent';
             const lbl = document.createElement('div');
-            lbl.className = "kapple-qdrop-item-label';
+            lbl.className = 'kapple-qdrop-item-label';
             lbl.textContent = label;
             item.append(accent, lbl);
             item.addEventListener('mousedown', (e) => {
@@ -9263,7 +9263,7 @@ window.kappleGetQueueInfo = function () {
         container.innerHTML = '';
         const THEME_LABELS = { system: 'System', light: 'Light', dark: 'Dark' };
         const cur = { ...info };
-        const send = patch => { Object.assign(cur, patch); (window.kappleBridge || window.adamBridge).setAcrylic(patch); };
+        const send = patch => { Object.assign(cur, patch); window.kappleBridge.setAcrylic(patch); };
         const selectCss = FF + 'min-width:150px;padding:5px 8px;border-radius:6px;border:0.5px solid rgba(255,255,255,0.2);' +
             'background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.88);font-size:13px;outline:none;color-scheme:dark;';
         function select(labels, keys, value, onChange) {
@@ -9311,7 +9311,7 @@ window.kappleGetQueueInfo = function () {
         const reset = makeBtn('Reset');
         reset.style.cssText += 'margin:10px 0;display:block;';
         reset.onclick = async () => {
-            const d = await (window.kappleBridge || window.adamBridge).setAcrylic({ ...info.defaults });
+            const d = await window.kappleBridge.setAcrylic({ ...info.defaults });
             if (!d) return;
             Object.assign(cur, d);
             themeSel.value = d.theme; color.value = d.tintColor;
@@ -9346,7 +9346,7 @@ window.kappleGetQueueInfo = function () {
                 pal[key] = picker.value;
                 swatchWrap.style.background = picker.value;
                 st.curPalette = { ...pal };
-                (window.kappleBridge || window.adamBridge).setThemePalette(key, picker.value);
+                window.kappleBridge.setThemePalette(key, picker.value);
             };
             swatchWrap.appendChild(picker);
             const lbl = document.createElement('div');
@@ -9360,7 +9360,7 @@ window.kappleGetQueueInfo = function () {
         const resetBtn = makeBtn('Reset to Apple Music');
         resetBtn.style.cssText += 'margin:10px 0;display:block;';
         resetBtn.onclick = async () => {
-            const newPal = await (window.kappleBridge || window.adamBridge).resetThemePalette();
+            const newPal = await window.kappleBridge.resetThemePalette();
             if (newPal) { st.curPalette = newPal; _kappleRenderPaletteEditor(container, thInfo, st); }
         };
         container.appendChild(resetBtn);
@@ -9387,7 +9387,7 @@ window.kappleGetQueueInfo = function () {
                 cl.textContent = name;
                 cl.onclick = () => {
                     const pr = st.thPresets.find(x => x.name === name);
-                    if (pr) { st.curPalette = pr.palette; (window.kappleBridge || window.adamBridge).applyThemePreset(name); _kappleRenderPaletteEditor(container, thInfo, st); }
+                    if (pr) { st.curPalette = pr.palette; window.kappleBridge.applyThemePreset(name); _kappleRenderPaletteEditor(container, thInfo, st); }
                 };
                 chip.appendChild(cl);
                 if (!builtin) {
@@ -9396,7 +9396,7 @@ window.kappleGetQueueInfo = function () {
                     del.style.cssText = 'border:none;background:transparent;color:rgba(255,255,255,0.35);cursor:pointer;padding:0 0 0 4px;display:inline-flex;align-items:center;';
                     del.onclick = () => {
                         st.thPresets = st.thPresets.filter(x => x.name !== name);
-                        (window.kappleBridge || window.adamBridge).deleteThemePreset(name);
+                        window.kappleBridge.deleteThemePreset(name);
                         renderPresets();
                     };
                     chip.appendChild(del);
@@ -9424,7 +9424,7 @@ window.kappleGetQueueInfo = function () {
         const doSave = async () => {
             const name = saveNameInput.value.trim();
             if (!name) return;
-            const newPresets = await (window.kappleBridge || window.adamBridge).saveThemePreset(name);
+            const newPresets = await window.kappleBridge.saveThemePreset(name);
             if (newPresets) {
                 const builtins = st.thPresets.filter(x => x.builtin);
                 st.thPresets = [...builtins, ...newPresets];
@@ -9442,11 +9442,11 @@ window.kappleGetQueueInfo = function () {
         const exportBtn = makeBtn('Export');
         exportBtn.onclick = async () => {
             const name = prompt('Preset name to export (leave blank for current palette):') || 'current';
-            await (window.kappleBridge || window.adamBridge).exportThemePreset(name);
+            await window.kappleBridge.exportThemePreset(name);
         };
         const importBtn = makeBtn('Import');
         importBtn.onclick = async () => {
-            const preset = await (window.kappleBridge || window.adamBridge).importThemePreset();
+            const preset = await window.kappleBridge.importThemePreset();
             if (preset) {
                 st.thPresets = st.thPresets.filter(x => x.name !== preset.name);
                 st.thPresets.push(preset);
@@ -9482,16 +9482,16 @@ window.kappleGetQueueInfo = function () {
         const wrap = document.createElement('div');
         wrap.style.cssText = 'position:relative;display:inline-block;min-width:180px;';
         const btn = document.createElement('div');
-        btn.className = "kapple-qdrop-btn';
+        btn.className = 'kapple-qdrop-btn';
         btn.style.cssText += 'font-size:12px;';
         const btnLabel = document.createElement('span');
         btnLabel.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         const chevron = document.createElement('span');
-        chevron.className = "kapple-qdrop-chevron';
+        chevron.className = 'kapple-qdrop-chevron';
         chevron.innerHTML = '&#9660;';
         btn.append(btnLabel, chevron);
         const menu = document.createElement('div');
-        menu.className = "kapple-qdrop-menu';
+        menu.className = 'kapple-qdrop-menu';
         menu.style.cssText += 'display:none;position:absolute;top:calc(100% + 4px);right:0;left:auto;z-index:20;min-width:100%;';
         function setOpt(v, save) {
             current = v;
@@ -9504,10 +9504,10 @@ window.kappleGetQueueInfo = function () {
         }
         options.forEach(({ value, label }) => {
             const item = document.createElement('div');
-            item.className = "kapple-qdrop-item';
+            item.className = 'kapple-qdrop-item';
             item.dataset.value = value;
-            const accent = document.createElement('div'); accent.className = "kapple-qdrop-accent';
-            const lbl = document.createElement('div'); lbl.className = "kapple-qdrop-item-label';
+            const accent = document.createElement('div'); accent.className = 'kapple-qdrop-accent';
+            const lbl = document.createElement('div'); lbl.className = 'kapple-qdrop-item-label';
             lbl.textContent = label;
             item.append(accent, lbl);
             item.addEventListener('mousedown', e => { e.preventDefault(); setOpt(value, true); menu.style.display = 'none'; });
@@ -9553,7 +9553,7 @@ window.kappleGetQueueInfo = function () {
         resetBtn.onmouseenter = () => { resetBtn.style.background = 'rgba(255,255,255,0.12)'; resetBtn.style.color = 'rgba(255,255,255,0.7)'; };
         resetBtn.onmouseleave = () => { resetBtn.style.background = 'rgba(255,255,255,0.06)'; resetBtn.style.color = 'rgba(255,255,255,0.38)'; };
         const { wrap: ddWrap, getValue, setValue } = _dlDropdown(presets, isCustom ? presets[0].value : savedValue, v => {
-            (window.kappleBridge || window.adamBridge)?.setTweak(prefKey, v);
+            window.kappleBridge?.setTweak(prefKey, v);
             exampleEl.textContent = _dlRenderTemplate(v) + (suffix || '');
             updatePreview();
         });
@@ -9584,7 +9584,7 @@ window.kappleGetQueueInfo = function () {
                 validMsg.style.color = '#30d158';
                 validMsg.textContent = val ? '✓ Valid' : '';
                 customInp.style.borderColor = val ? 'rgba(48,209,88,0.4)' : 'rgba(255,255,255,0.15)';
-                (window.kappleBridge || window.adamBridge)?.setTweak(prefKey, val);
+                window.kappleBridge?.setTweak(prefKey, val);
                 exampleEl.textContent = val ? (_dlRenderTemplate(val) + (suffix || '')) : '';
                 updatePreview();
             }
@@ -9600,7 +9600,7 @@ window.kappleGetQueueInfo = function () {
                 customInp.value = getValue();
                 applyCustom(customInp.value);
             } else {
-                (window.kappleBridge || window.adamBridge)?.setTweak(prefKey, getValue());
+                window.kappleBridge?.setTweak(prefKey, getValue());
                 exampleEl.textContent = _dlRenderTemplate(getValue()) + (suffix || '');
                 updatePreview();
             }
@@ -9608,7 +9608,7 @@ window.kappleGetQueueInfo = function () {
         resetBtn.onclick = () => {
             customCb.checked = false;
             setValue(presets[0].value);
-            (window.kappleBridge || window.adamBridge)?.setTweak(prefKey, presets[0].value);
+            window.kappleBridge?.setTweak(prefKey, presets[0].value);
             exampleEl.textContent = _dlRenderTemplate(presets[0].value) + (suffix || '');
             updatePreview();
             syncMode();
@@ -9704,11 +9704,11 @@ window.kappleGetQueueInfo = function () {
         const blurSl = document.createElement('input');
         blurSl.type = 'range'; blurSl.min = GLASS.blur.min; blurSl.max = GLASS.blur.max; blurSl.step = 4; blurSl.value = cleanBlur(prefs.glassBlur);
         blurSl.style.cssText = 'flex:1;accent-color:#fc3c44;margin:0 10px;';
-        blurSl.oninput = () => { blurVal.textContent = `${blurSl.value}px`; (window.kappleBridge || window.adamBridge).setGlassBlur(+blurSl.value); };
+        blurSl.oninput = () => { blurVal.textContent = `${blurSl.value}px`; window.kappleBridge.setGlassBlur(+blurSl.value); };
         const blurR = document.createElement('div');
         blurR.style.cssText = 'display:flex;align-items:center;flex:1;';
         blurR.appendChild(blurSl); blurR.appendChild(blurVal);
-        blurR.appendChild(makeResetBtn('glass blur', () => { blurSl.value = GLASS.blur.def; blurVal.textContent = `${GLASS.blur.def}px`; (window.kappleBridge || window.adamBridge).setGlassBlur(GLASS.blur.def); }));
+        blurR.appendChild(makeResetBtn('glass blur', () => { blurSl.value = GLASS.blur.def; blurVal.textContent = `${GLASS.blur.def}px`; window.kappleBridge.setGlassBlur(GLASS.blur.def); }));
         dBody.appendChild(makeRow('Glass blur', blurR, 'Sidebar and UI element blur intensity', false));
         const bgBlurVal = document.createElement('span');
         bgBlurVal.style.cssText = FF + 'font-size:12px;color:rgba(255,255,255,0.5);width:38px;text-align:right;';
@@ -9716,13 +9716,13 @@ window.kappleGetQueueInfo = function () {
         const bgBlurSl = document.createElement('input');
         bgBlurSl.type = 'range'; bgBlurSl.min = 0; bgBlurSl.max = 60; bgBlurSl.step = 2; bgBlurSl.value = prefs.bgBlur ?? 18;
         bgBlurSl.style.cssText = 'flex:1;accent-color:#fc3c44;margin:0 10px;';
-        bgBlurSl.oninput = () => { bgBlurVal.textContent = `${bgBlurSl.value}px`; (window.kappleBridge || window.adamBridge).setBgBlur(+bgBlurSl.value); };
+        bgBlurSl.oninput = () => { bgBlurVal.textContent = `${bgBlurSl.value}px`; window.kappleBridge.setBgBlur(+bgBlurSl.value); };
         const bgBlurR = document.createElement('div');
         bgBlurR.style.cssText = 'display:flex;align-items:center;flex:1;';
         bgBlurR.appendChild(bgBlurSl); bgBlurR.appendChild(bgBlurVal);
-        bgBlurR.appendChild(makeResetBtn('background blur', () => { bgBlurSl.value = 18; bgBlurVal.textContent = '18px'; (window.kappleBridge || window.adamBridge).setBgBlur(18); }));
+        bgBlurR.appendChild(makeResetBtn('background blur', () => { bgBlurSl.value = 18; bgBlurVal.textContent = '18px'; window.kappleBridge.setBgBlur(18); }));
         // Windows blurs with the acrylic window (Theme settings), not a wallpaper image.
-        if ((window.kappleBridge || window.adamBridge).platform !== 'win32') dBody.appendChild(makeRow('Background blur', bgBlurR, 'Wallpaper blur (requires a wallpaper to be set)', false));
+        if (window.kappleBridge.platform !== 'win32') dBody.appendChild(makeRow('Background blur', bgBlurR, 'Wallpaper blur (requires a wallpaper to be set)', false));
         // Sidebar opacity edits a different stored value in each theme (engine/sidebar-glass.js): the accent
         // theme's sidebar colour, or the blur theme's veil. The slider follows the theme, so its range, value,
         // default and hint change with it; main.mjs applies the same rule when the value arrives.
@@ -9749,7 +9749,7 @@ window.kappleGetQueueInfo = function () {
             const c = sidebarOpacityControl(navMode);
             navVals[c.pref] = c.clean(v);
             showNavOpacity();
-            (window.kappleBridge || window.adamBridge).setNavOpacity(navVals[c.pref]);
+            window.kappleBridge.setNavOpacity(navVals[c.pref]);
         }
         navOpSl.oninput = () => setNavOpacity(navOpSl.value);
         navOpR.appendChild(navOpSl); navOpR.appendChild(navOpVal);
@@ -9761,7 +9761,7 @@ window.kappleGetQueueInfo = function () {
             navMode = e.detail; showNavOpacity();
         };
         window.addEventListener('adam:theme-mode', onThemeMode);
-        (window.kappleBridge || window.adamBridge).getThemeInfo().then(info => { if (info?.themeMode) { navMode = info.themeMode; showNavOpacity(); } }).catch(() => {});
+        window.kappleBridge.getThemeInfo().then(info => { if (info?.themeMode) { navMode = info.themeMode; showNavOpacity(); } }).catch(() => {});
         dBody.appendChild(navOpRow);
         const zoomVal = document.createElement('span');
         zoomVal.style.cssText = FF + 'font-size:12px;color:rgba(255,255,255,0.5);width:38px;text-align:right;';
@@ -9769,28 +9769,28 @@ window.kappleGetQueueInfo = function () {
         const zoomSl = document.createElement('input');
         zoomSl.type = 'range'; zoomSl.min = 75; zoomSl.max = 150; zoomSl.step = 25; zoomSl.value = Math.round((prefs.zoomFactor ?? 1) * 100);
         zoomSl.style.cssText = 'flex:1;accent-color:#fc3c44;margin:0 10px;';
-        zoomSl.oninput = () => { zoomVal.textContent = `${zoomSl.value}%`; (window.kappleBridge || window.adamBridge).setZoom(+zoomSl.value / 100); };
+        zoomSl.oninput = () => { zoomVal.textContent = `${zoomSl.value}%`; window.kappleBridge.setZoom(+zoomSl.value / 100); };
         const zoomR = document.createElement('div');
         zoomR.style.cssText = 'display:flex;align-items:center;flex:1;';
         zoomR.appendChild(zoomSl); zoomR.appendChild(zoomVal);
-        zoomR.appendChild(makeResetBtn('zoom', () => { zoomSl.value = 100; zoomVal.textContent = '100%'; (window.kappleBridge || window.adamBridge).setZoom(1); }));
+        zoomR.appendChild(makeResetBtn('zoom', () => { zoomSl.value = 100; zoomVal.textContent = '100%'; window.kappleBridge.setZoom(1); }));
         dBody.appendChild(makeRow('Zoom', zoomR, null, false));
         const motionToggle = _kappleIOSToggle(prefs.reduceMotion === true,
-            v => (window.kappleBridge || window.adamBridge).setTweak('reduceMotion', v));
+            v => window.kappleBridge.setTweak('reduceMotion', v));
         dBody.appendChild(makeRow('Reduce animations', motionToggle,
             'Use still artwork and fewer transitions. Restart required.', false));
         const toggle = _kappleIOSToggle(prefs.hideUpsell !== false,
-            v => (window.kappleBridge || window.adamBridge).setTweak('hideUpsell', v));
+            v => window.kappleBridge.setTweak('hideUpsell', v));
         dBody.appendChild(makeRow('Hide upsell banners', toggle, null, false));
         const radioToggle = _kappleIOSToggle(!!prefs.hideRadio,
-            v => (window.kappleBridge || window.adamBridge).setTweak('hideRadio', v));
+            v => window.kappleBridge.setTweak('hideRadio', v));
         dBody.appendChild(makeRow('Hide Radio', radioToggle, 'Remove Radio from the sidebar', true));
         return wrap;
     }
 
     async function _buildThemeSection(prefs) {
         const { wrap, body: thBody } = makeSection('Theme');
-        const thInfo = await (window.kappleBridge || window.adamBridge).getThemeInfo().catch(() => ({ blurAvailable: true, themeMode: 'accent', themePalette: null, defaultPalette: null, themePresets: [], customCssPath: null }));
+        const thInfo = await window.kappleBridge.getThemeInfo().catch(() => ({ blurAvailable: true, themeMode: 'accent', themePalette: null, defaultPalette: null, themePresets: [], customCssPath: null }));
         const blurAvail = !!thInfo.blurAvailable;
         const st = {
             curMode: thInfo.themeMode || (blurAvail ? 'blur' : 'accent'),
@@ -9810,12 +9810,12 @@ window.kappleGetQueueInfo = function () {
             btnsRow.style.cssText = 'display:flex;gap:6px;padding-bottom:10px;';
             const browseBtn = makeBtn('Browse & Import CSS');
             browseBtn.onclick = async () => {
-                const fp = await (window.kappleBridge || window.adamBridge).importThemeCss();
+                const fp = await window.kappleBridge.importThemeCss();
                 if (fp) { pathDiv.textContent = fp; thInfo.customCssPath = fp; }
             };
             const clearBtn = makeBtn('Clear');
             clearBtn.onclick = () => {
-                (window.kappleBridge || window.adamBridge).setThemeMode('custom');
+                window.kappleBridge.setThemeMode('custom');
                 pathDiv.textContent = 'No file selected';
                 thInfo.customCssPath = null;
             };
@@ -9874,7 +9874,7 @@ window.kappleGetQueueInfo = function () {
                 // Each mode is fully isolated: set data-kapple-mode first so the CSS isolation
                 // rules (ghost blur layers) fire immediately, then update the backend.
                 document.body.setAttribute('data-kapple-mode', value);
-                (window.kappleBridge || window.adamBridge).setThemeMode(value);
+                window.kappleBridge.setThemeMode(value);
                 window.dispatchEvent(new CustomEvent('adam:theme-mode', { detail: value }));
                 renderThemeContent(value);
             };
@@ -9882,7 +9882,7 @@ window.kappleGetQueueInfo = function () {
         });
         modeRow.appendChild(modeSeg);
         const artToggle = _kappleIOSToggle(prefs.artTheme !== false, v => {
-            (window.kappleBridge || window.adamBridge).setTweak('artTheme', v);
+            window.kappleBridge.setTweak('artTheme', v);
             window.dispatchEvent(new CustomEvent('adam:art-theme', { detail: v }));
         });
         thBody.appendChild(makeRow('Album art theming', artToggle, 'Colour album and playlist pages with a palette from their artwork', false));
@@ -9963,7 +9963,7 @@ window.kappleGetQueueInfo = function () {
             // Re-enable lossless toggle if it was off.
             if (!losslessToggle._cb.checked) losslessToggle.click(); // runs the toggle's own handler
             setSQ('lossless');
-            (window.kappleBridge || window.adamBridge)?.setTweak('streaming-quality', 'lossless');
+            window.kappleBridge?.setTweak('streaming-quality', 'lossless');
             _streamingQuality = 'lossless';
         });
         if (!losslessUsable) { sqResetBtn.style.opacity = '0.38'; sqResetBtn.style.pointerEvents = 'none'; }
@@ -9987,7 +9987,7 @@ window.kappleGetQueueInfo = function () {
 
         let _onLosslessChange = null;
         const losslessToggle = _kappleIOSToggle(losslessOn, v => {
-            (window.kappleBridge || window.adamBridge)?.setTweak('lossless-enabled', v);
+            window.kappleBridge?.setTweak('lossless-enabled', v);
             _applyLosslessRowState(v);
             if (!v) {
                 setSQ('high-quality');
@@ -10050,12 +10050,12 @@ window.kappleGetQueueInfo = function () {
             szSl.oninput = () => { szVal.textContent = `${szSl.value} MB`; };
             szSl.onchange = () => {
                 const v = +szSl.value;
-                (window.kappleBridge || window.adamBridge)?.setPref('persistLimitMB', v);
+                window.kappleBridge?.setPref('persistLimitMB', v);
                 fetch(`${ENGINE}/api/v1/cache/config`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ persistLimitMB: v }) }).catch(() => {});
             };
             const szResetBtn = _kappleMiniBtn(() => {
                 szSl.value = 500; szVal.textContent = '500 MB';
-                (window.kappleBridge || window.adamBridge)?.setPref('persistLimitMB', 500);
+                window.kappleBridge?.setPref('persistLimitMB', 500);
                 fetch(`${ENGINE}/api/v1/cache/config`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ persistLimitMB: 500 }) }).catch(() => {});
             });
             const szRow = document.createElement('div');
@@ -10068,7 +10068,7 @@ window.kappleGetQueueInfo = function () {
             ttlInp.onchange = () => {
                 const v = Math.max(1, +ttlInp.value || 5);
                 ttlInp.value = v;
-                (window.kappleBridge || window.adamBridge)?.setPref('persistTTLDays', v);
+                window.kappleBridge?.setPref('persistTTLDays', v);
                 fetch(`${ENGINE}/api/v1/cache/config`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ persistTTLDays: v }) }).catch(() => {});
             };
             const ttlWrap = document.createElement('div');
@@ -10080,7 +10080,7 @@ window.kappleGetQueueInfo = function () {
             ttlWrap.appendChild(ttlUnit);
             const ttlResetBtn = _kappleMiniBtn(() => {
                 ttlInp.value = 5;
-                (window.kappleBridge || window.adamBridge)?.setPref('persistTTLDays', 5);
+                window.kappleBridge?.setPref('persistTTLDays', 5);
                 fetch(`${ENGINE}/api/v1/cache/config`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ persistTTLDays: 5 }) }).catch(() => {});
             });
             ttlWrap.appendChild(ttlResetBtn);
@@ -10188,12 +10188,12 @@ window.kappleGetQueueInfo = function () {
             inp.style.cssText = FF + 'width:60px;padding:4px 8px;border-radius:7px;text-align:center;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.88);font-size:12.5px;font-family:ui-monospace,monospace;outline:none;transition:border-color 0.15s;';
             inp.onfocus = () => { inp.style.borderColor = 'rgba(252,60,68,0.5)'; };
             inp.onblur  = () => { inp.style.borderColor = 'rgba(255,255,255,0.15)'; };
-            inp.oninput = () => (window.kappleBridge || window.adamBridge)?.setTweak(prefKey, inp.value);
+            inp.oninput = () => window.kappleBridge?.setTweak(prefKey, inp.value);
             return inp;
         }
         function makeMarkerControl(prefKey, defaultVal) {
             const inp = makeMarkerInput(prefKey, defaultVal);
-            const resetBtn = makeMiniBtn('', () => { inp.value = defaultVal; (window.kappleBridge || window.adamBridge)?.setTweak(prefKey, defaultVal); });
+            const resetBtn = makeMiniBtn('', () => { inp.value = defaultVal; window.kappleBridge?.setTweak(prefKey, defaultVal); });
             const w = document.createElement('div'); w.style.cssText = 'display:flex;align-items:center;gap:6px;';
             w.append(inp, resetBtn); return w;
         }
@@ -10209,7 +10209,7 @@ window.kappleGetQueueInfo = function () {
             const inpRow = makeDependentRow('Marker text', makeMarkerControl(prefKey.replace('-enabled', '-marker'), marker));
             inpRow.style.display = on ? '' : 'none';
             dlBody.appendChild(makeRow(label,
-                makeIOSToggle(on, v => { (window.kappleBridge || window.adamBridge)?.setTweak(prefKey, v); inpRow.style.display = v ? '' : 'none'; }),
+                makeIOSToggle(on, v => { window.kappleBridge?.setTweak(prefKey, v); inpRow.style.display = v ? '' : 'none'; }),
                 hint, isLast));
             dlBody.appendChild(inpRow);
         }
@@ -10217,7 +10217,7 @@ window.kappleGetQueueInfo = function () {
         makeMarkerRow('Clean content',         'clean-enabled',    '[C]', 'Add [C] to filenames of clean/censored tracks', false);
         makeMarkerRow('Apple Digital Masters', 'adm-enabled',      '[M]', 'Add [M] to filenames of tracks mastered for Apple Music', false);
         dlBody.appendChild(makeRow('Playlist metadata',
-            makeIOSToggle(!!(prefs['use-songinfo-for-playlist']), v => (window.kappleBridge || window.adamBridge)?.setTweak('use-songinfo-for-playlist', v)),
+            makeIOSToggle(!!(prefs['use-songinfo-for-playlist']), v => window.kappleBridge?.setTweak('use-songinfo-for-playlist', v)),
             'Use original album track number and album name instead of playlist position when downloading a playlist', true));
     }
 
@@ -10277,7 +10277,7 @@ window.kappleGetQueueInfo = function () {
         const dlQReset = makeMiniBtn('', () => {
             if (!_dlLosslessOn) return;
             setDlQ('lossless');
-            (window.kappleBridge || window.adamBridge)?.setTweak('dl-quality', 'lossless');
+            window.kappleBridge?.setTweak('dl-quality', 'lossless');
         });
         const dlQInner = document.createElement('div');
         dlQInner.style.cssText = 'flex:1;display:flex;align-items:center;gap:8px;';
@@ -10316,7 +10316,7 @@ window.kappleGetQueueInfo = function () {
         dlBody.appendChild(ffmpegRow);
         const ffmpegSub = ffmpegRow.firstChild.children[1];
 
-        const ffmpegToggle = makeIOSToggle(!!(prefs['dl-ffmpeg-enabled']), v => (window.kappleBridge || window.adamBridge)?.setTweak('dl-ffmpeg-enabled', v));
+        const ffmpegToggle = makeIOSToggle(!!(prefs['dl-ffmpeg-enabled']), v => window.kappleBridge?.setTweak('dl-ffmpeg-enabled', v));
         dlBody.appendChild(makeRow('Convert with FFmpeg', ffmpegToggle, 'Re-encode downloaded files with FFmpeg', false));
 
         function applyFfmpeg(info) {
@@ -10354,16 +10354,16 @@ window.kappleGetQueueInfo = function () {
         ffmpegPathInp.value = prefs['ffmpeg-path'] || '';
         ffmpegPathInp.style.cssText = FF + 'flex:1;min-width:0;padding:5px 9px;border-radius:7px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.14);color:rgba(255,255,255,0.85);font-size:11.5px;font-family:ui-monospace,monospace;outline:none;transition:border-color 0.15s;';
         ffmpegPathInp.onfocus = () => { ffmpegPathInp.style.borderColor = 'rgba(252,60,68,0.5)'; };
-        ffmpegPathInp.onblur  = () => { ffmpegPathInp.style.borderColor = 'rgba(255,255,255,0.14)'; const v = ffmpegPathInp.value.trim(); (window.kappleBridge || window.adamBridge)?.setTweak('ffmpeg-path', v); recheckFfmpeg(v); };
+        ffmpegPathInp.onblur  = () => { ffmpegPathInp.style.borderColor = 'rgba(255,255,255,0.14)'; const v = ffmpegPathInp.value.trim(); window.kappleBridge?.setTweak('ffmpeg-path', v); recheckFfmpeg(v); };
         const ffmpegPathRow = document.createElement('div');
         ffmpegPathRow.style.cssText = 'display:flex;align-items:center;gap:6px;flex:1;';
         ffmpegPathRow.appendChild(ffmpegPathInp);
         dlBody.appendChild(makeRow('FFmpeg path', ffmpegPathRow, 'Leave blank to use system PATH', false));
 
-        const embedArtToggle = makeIOSToggle(prefs['dl-embed-art'] !== false, v => (window.kappleBridge || window.adamBridge)?.setTweak('dl-embed-art', v));
+        const embedArtToggle = makeIOSToggle(prefs['dl-embed-art'] !== false, v => window.kappleBridge?.setTweak('dl-embed-art', v));
         dlBody.appendChild(makeRow('Embed artwork', embedArtToggle, null, false));
 
-        const motionArtToggle = makeIOSToggle(!!(prefs['dl-motion-art']), v => (window.kappleBridge || window.adamBridge)?.setTweak('dl-motion-art', v));
+        const motionArtToggle = makeIOSToggle(!!(prefs['dl-motion-art']), v => window.kappleBridge?.setTweak('dl-motion-art', v));
         dlBody.appendChild(makeRow('Download animated artwork', motionArtToggle, 'Save motion cover as a separate video file alongside the track', false));
 
         // ── MV format ──
@@ -10377,7 +10377,7 @@ window.kappleGetQueueInfo = function () {
         ];
         const { wrap: mvResDd } = _dlDropdown(MV_RES_OPTS, prefs['dl-mv-quality'] || 'best', v => {
             if (!drmSignedIn) return;
-            (window.kappleBridge || window.adamBridge)?.setTweak('dl-mv-quality', v);
+            window.kappleBridge?.setTweak('dl-mv-quality', v);
         });
         if (!drmSignedIn) { mvResDd.style.opacity = '0.38'; mvResDd.style.pointerEvents = 'none'; }
         dlBody.appendChild(makeRow('Resolution', mvResDd,
@@ -10389,14 +10389,14 @@ window.kappleGetQueueInfo = function () {
             { value: '1200', label: '1200 × 1200' },
             { value: '3000', label: '3000 × 3000' },
         ];
-        const { wrap: artDd } = _dlDropdown(ART_OPTS, prefs['dl-artwork-size'] || '1200', v => (window.kappleBridge || window.adamBridge)?.setTweak('dl-artwork-size', v));
+        const { wrap: artDd } = _dlDropdown(ART_OPTS, prefs['dl-artwork-size'] || '1200', v => window.kappleBridge?.setTweak('dl-artwork-size', v));
         dlBody.appendChild(makeRow('Artwork size', artDd, null, false));
 
         // ── Lyrics ──
         dlBody.appendChild(_dlSubhead('Lyrics'));
-        const lyricsToggle = makeIOSToggle(prefs['dl-lyrics'] !== false, v => (window.kappleBridge || window.adamBridge)?.setTweak('dl-lyrics', v));
+        const lyricsToggle = makeIOSToggle(prefs['dl-lyrics'] !== false, v => window.kappleBridge?.setTweak('dl-lyrics', v));
         dlBody.appendChild(makeRow('Embed lyrics', lyricsToggle, null, false));
-        const timedLyricsToggle = makeIOSToggle(prefs['dl-timed-lyrics'] !== false, v => (window.kappleBridge || window.adamBridge)?.setTweak('dl-timed-lyrics', v));
+        const timedLyricsToggle = makeIOSToggle(prefs['dl-timed-lyrics'] !== false, v => window.kappleBridge?.setTweak('dl-timed-lyrics', v));
         dlBody.appendChild(makeRow('Timed lyrics (SYLT)', timedLyricsToggle, null, false));
 
         // ── Content markers ──
@@ -10405,7 +10405,7 @@ window.kappleGetQueueInfo = function () {
         // ── Queue ──
         dlBody.appendChild(_dlSubhead('Queue'));
         dlBody.appendChild(makeRow('Retry on fail',
-            makeIOSToggle(prefs['retry-on-fail'] !== false, v => (window.kappleBridge || window.adamBridge)?.setTweak('retry-on-fail', v)),
+            makeIOSToggle(prefs['retry-on-fail'] !== false, v => window.kappleBridge?.setTweak('retry-on-fail', v)),
             'Automatically retry a failed download', false));
         const RETRY_TIMEOUT_OPTS = [
             { value: 15,  label: '15 seconds' },
@@ -10414,7 +10414,7 @@ window.kappleGetQueueInfo = function () {
             { value: 300, label: '5 minutes' },
         ];
         const { wrap: retryToDd } = _dlDropdown(RETRY_TIMEOUT_OPTS, parseInt(prefs['retry-timeout'] ?? '30', 10),
-            v => (window.kappleBridge || window.adamBridge)?.setTweak('retry-timeout', parseInt(v, 10)));
+            v => window.kappleBridge?.setTweak('retry-timeout', parseInt(v, 10)));
         dlBody.appendChild(makeRow('Retry after', retryToDd, null, false));
         return { wrap, applyLossless: applyDlLossless };
     }
@@ -10423,21 +10423,21 @@ window.kappleGetQueueInfo = function () {
         const { wrap, body } = makeSection('Playback');
 
         // Resume playback on launch
-        const resumeRaw = await (window.kappleBridge || window.adamBridge)?.storeRead('resumeEnabled').catch(() => null);
+        const resumeRaw = await window.kappleBridge?.storeRead('resumeEnabled').catch(() => null);
         const resumeOn  = resumeRaw !== 'false' && resumeRaw !== false;
         const resumeToggle = _kappleIOSToggle(resumeOn, async (v) => {
             _resumeEnabled = v;
-            await (window.kappleBridge || window.adamBridge)?.storeWrite('resumeEnabled', String(v)).catch(() => {});
+            await window.kappleBridge?.storeWrite('resumeEnabled', String(v)).catch(() => {});
             if (!v) _resumeClear();
         });
         body.appendChild(makeRow('Resume on launch', resumeToggle,
             'Offer to restore your last queue and position on launch', false));
 
         // Sound Check (loudness normalization) — experimental
-        const scRaw = await (window.kappleBridge || window.adamBridge)?.storeRead('soundCheckEnabled').catch(() => null);
+        const scRaw = await window.kappleBridge?.storeRead('soundCheckEnabled').catch(() => null);
         const scOn  = scRaw === 'true' || scRaw === true;
         const scToggle = _kappleIOSToggle(scOn, async (v) => {
-            await (window.kappleBridge || window.adamBridge)?.storeWrite('soundCheckEnabled', String(v)).catch(() => {});
+            await window.kappleBridge?.storeWrite('soundCheckEnabled', String(v)).catch(() => {});
             _scSetEnabled(v);
         });
         body.appendChild(makeRow('Loudness Normalisation', scToggle,
@@ -10470,7 +10470,7 @@ window.kappleGetQueueInfo = function () {
         const gaplessOn = prefs?.['xf-preserve-gapless'] !== false;
         const gaplessToggle = _kappleIOSToggle(gaplessOn, (v) => {
             _xfPreserveGapless = v;
-            (window.kappleBridge || window.adamBridge)?.setTweak('xf-preserve-gapless', v);
+            window.kappleBridge?.setTweak('xf-preserve-gapless', v);
         });
         const gaplessRow = makeRow('Keep albums gapless', gaplessToggle,
             'Skip crossfade between consecutive tracks of the same album', false);
@@ -10479,7 +10479,7 @@ window.kappleGetQueueInfo = function () {
         const stationOn = prefs?.['xf-station'] !== false;
         const stationToggle = _kappleIOSToggle(stationOn, (v) => {
             _xfStationEnabled = v;
-            (window.kappleBridge || window.adamBridge)?.setTweak('xf-station', v);
+            window.kappleBridge?.setTweak('xf-station', v);
         });
         const stationRow = makeRow('Crossfade autoplay & stations', stationToggle,
             'Wait for the next recommended track so it fades in consistently', false);
@@ -10506,13 +10506,13 @@ window.kappleGetQueueInfo = function () {
         xfApplyMode(xfModeInit);
 
         // Discord Rich Presence
-        const discordRaw = await (window.kappleBridge || window.adamBridge)?.storeRead('discordEnabled').catch(() => null);
+        const discordRaw = await window.kappleBridge?.storeRead('discordEnabled').catch(() => null);
         const discordOn  = discordRaw === 'true' || discordRaw === true;
         const discordToggle = _kappleIOSToggle(discordOn, async (v) => {
             _discordEnabled = v;
-            await (window.kappleBridge || window.adamBridge)?.storeWrite('discordEnabled', String(v)).catch(() => {});
+            await window.kappleBridge?.storeWrite('discordEnabled', String(v)).catch(() => {});
             if (v) _discordUpdateNow();
-            else (window.kappleBridge || window.adamBridge)?.discordDisable?.();
+            else window.kappleBridge?.discordDisable?.();
         });
         body.appendChild(makeRow('Discord Rich Presence', discordToggle,
             'Show the current track on your Discord profile (requires a client ID in main.mjs)', false));
@@ -10542,14 +10542,14 @@ window.kappleGetQueueInfo = function () {
                     rows.appendChild(h);
                 }
                 const toggle = _kappleIOSToggle(s.enabled, async (v) => {
-                    try { render(await (window.kappleBridge || window.adamBridge).linksSet(s.scheme, v)); }
+                    try { render(await window.kappleBridge.linksSet(s.scheme, v)); }
                     catch (e) { console.warn('[Kapple Music Links] could not change', s.scheme, e?.message || e); }
                 });
                 const status = !s.enabled ? '' : (s.active ? ' · active' : ' · not active yet: check your system default apps');
                 rows.appendChild(makeRow(s.scheme + '://', toggle, s.note + status, false));
             }
         };
-        (window.kappleBridge || window.adamBridge)?.linksGet?.().then(render).catch(() => {});
+        window.kappleBridge?.linksGet?.().then(render).catch(() => {});
         return { wrap };
     }
 
@@ -10559,7 +10559,7 @@ window.kappleGetQueueInfo = function () {
         // Master enable toggle.
         const enToggle = _kappleIOSToggle(_hotkeysEnabled, async (v) => {
             _hotkeysEnabled = v;
-            await (window.kappleBridge || window.adamBridge)?.storeWrite('hotkeysEnabled', String(v)).catch(() => {});
+            await window.kappleBridge?.storeWrite('hotkeysEnabled', String(v)).catch(() => {});
         });
         body.appendChild(makeRow('In-app shortcuts', enToggle,
             'Control playback with the keyboard when the window is focused', false));
@@ -10604,7 +10604,7 @@ window.kappleGetQueueInfo = function () {
         n.innerHTML = html;
         n.querySelectorAll('a').forEach(a => {
             a.style.cssText = 'color:#fc3c44;text-decoration:none;';
-            a.onclick = (e) => { e.preventDefault(); (window.kappleBridge || window.adamBridge)?.openExternal?.(a.getAttribute('href')) ?? window.open(a.getAttribute('href')); };
+            a.onclick = (e) => { e.preventDefault(); window.kappleBridge?.openExternal?.(a.getAttribute('href')) ?? window.open(a.getAttribute('href')); };
         });
         return n;
     }
@@ -10614,11 +10614,11 @@ window.kappleGetQueueInfo = function () {
 
         // ── Last.fm ──────────────────────────────────────────────────────────
         body.appendChild(_scrobbleSubhead('Last.fm'));
-        const lf = await (window.kappleBridge || window.adamBridge)?.lastfmStatus().catch(() => null) ?? {};
+        const lf = await window.kappleBridge?.lastfmStatus().catch(() => null) ?? {};
 
         // Auto-seed hardcoded credentials if not yet stored.
         if (LASTFM_API_KEY && (!lf.apiKey || !lf.secretSet)) {
-            await (window.kappleBridge || window.adamBridge)?.lastfmSetCredentials({ apiKey: LASTFM_API_KEY, secret: LASTFM_API_SECRET }).catch(() => {});
+            await window.kappleBridge?.lastfmSetCredentials({ apiKey: LASTFM_API_KEY, secret: LASTFM_API_SECRET }).catch(() => {});
             Object.assign(lf, { apiKey: LASTFM_API_KEY, secretSet: true, configured: true });
         }
 
@@ -10628,18 +10628,18 @@ window.kappleGetQueueInfo = function () {
             lfVal.innerHTML = '';
             lfVal.appendChild(statusVal(lf.username || 'connected', true));
             const disc = makeBtn('Disconnect');
-            disc.onclick = async () => { await (window.kappleBridge || window.adamBridge)?.lastfmDisconnect(); _lastfmConnected = false; openSettings(); };
+            disc.onclick = async () => { await window.kappleBridge?.lastfmDisconnect(); _lastfmConnected = false; openSettings(); };
             lfVal.appendChild(disc);
         };
         const lfDisconnected = () => {
             lfVal.innerHTML = '';
             const connect = makeBtn('Connect');
             connect.onclick = async () => {
-                const r = await (window.kappleBridge || window.adamBridge)?.lastfmAuth();
+                const r = await window.kappleBridge?.lastfmAuth();
                 if (r?.error) { connect.textContent = 'Error — retry'; return; }
                 connect.textContent = 'Finish connecting';
                 connect.onclick = async () => {
-                    const s = await (window.kappleBridge || window.adamBridge)?.lastfmSession(r.token);
+                    const s = await window.kappleBridge?.lastfmSession(r.token);
                     if (s?.username) { _lastfmConnected = true; lf.username = s.username; lfConnected(); }
                     else { connect.textContent = 'Approve in the window, then retry'; }
                 };
@@ -10651,7 +10651,7 @@ window.kappleGetQueueInfo = function () {
 
         // ── ListenBrainz ─────────────────────────────────────────────────────
         body.appendChild(_scrobbleSubhead('ListenBrainz'));
-        const lb = await (window.kappleBridge || window.adamBridge)?.lbStatus().catch(() => null) ?? {};
+        const lb = await window.kappleBridge?.lbStatus().catch(() => null) ?? {};
         const lbCard = document.createElement('div');
         lbCard.style.cssText = FF +
             'display:flex;flex-direction:column;margin:4px 0 8px;' +
@@ -10675,7 +10675,7 @@ window.kappleGetQueueInfo = function () {
             lbRight.innerHTML = '';
             lbRight.appendChild(statusVal(lb.username || 'connected', true));
             const disc = makeBtn('Disconnect');
-            disc.onclick = async () => { await (window.kappleBridge || window.adamBridge)?.lbDisconnect(); _lbConnected = false; openSettings(); };
+            disc.onclick = async () => { await window.kappleBridge?.lbDisconnect(); _lbConnected = false; openSettings(); };
             lbRight.appendChild(disc);
         };
         const lbRenderInput = () => {
@@ -10691,8 +10691,8 @@ window.kappleGetQueueInfo = function () {
                 if (!tok) return;
                 lbConnBtn.textContent = '…';
                 lbConnBtn.disabled = true;
-                await (window.kappleBridge || window.adamBridge)?.lbSetToken(tok);
-                const s = await (window.kappleBridge || window.adamBridge)?.lbStatus();
+                await window.kappleBridge?.lbSetToken(tok);
+                const s = await window.kappleBridge?.lbStatus();
                 if (s?.connected) { _lbConnected = true; lb.username = s.username; lb.connected = true; lbRenderConnected(); }
                 else { lbConnBtn.textContent = 'Invalid'; lbConnBtn.disabled = false; }
             };
@@ -10714,11 +10714,11 @@ window.kappleGetQueueInfo = function () {
 
     async function _buildHistorySection() {
         const { wrap, body: histBody } = makeSection('History');
-        const histEnabledRaw = await (window.kappleBridge || window.adamBridge)?.storeRead('historyEnabled').catch(() => null);
+        const histEnabledRaw = await window.kappleBridge?.storeRead('historyEnabled').catch(() => null);
         const histIsEnabled = histEnabledRaw !== 'false' && histEnabledRaw !== false;
         const histToggle = _kappleIOSToggle(histIsEnabled, async (v) => {
             _histEnabled = v;
-            await (window.kappleBridge || window.adamBridge)?.storeWrite('historyEnabled', String(v)).catch(() => {});
+            await window.kappleBridge?.storeWrite('historyEnabled', String(v)).catch(() => {});
             _histInject();
         });
         histBody.appendChild(makeRow('Show in Up Next panel', histToggle, 'Display recently played tracks above the queue', false));
@@ -10788,7 +10788,7 @@ window.kappleGetQueueInfo = function () {
         _settingsPreload = Promise.all([
             fetchDRM().catch(() => ({ state: {}, capabilities: {}, backend: {} })),
             fetch(`${ENGINE}/api/v1/tools`).then(r => r.json()).catch(() => ({})),
-            (window.kappleBridge || window.adamBridge).getPrefs().catch(() => ({})),
+            window.kappleBridge.getPrefs().catch(() => ({})),
             fetch(`${ENGINE}/api/v1/capabilities`).then(r => r.json()).catch(() => ({})),
         ]);
         return _settingsPreload;
@@ -10832,7 +10832,7 @@ window.kappleGetQueueInfo = function () {
         titleBar.append(title, savedBadge);
         dlg.appendChild(titleBar);
 
-        const _bridge = (window.kappleBridge || window.adamBridge);
+        const _bridge = window.kappleBridge;
         if (_bridge._settingsRestore) _bridge._settingsRestore();
         const _realSetTweak = _bridge.setTweak.bind(_bridge);
         const _restoreProxy = () => { _bridge.setTweak = _realSetTweak; _bridge._settingsRestore = null; };
@@ -10865,7 +10865,7 @@ window.kappleGetQueueInfo = function () {
         const [drm, [, tools], prefs] = await Promise.all([
             fetchDRM().catch(() => ({ state: {}, capabilities: {}, backend: {} })),
             _settingsPreload ?? _warmSettingsCache(),
-            (window.kappleBridge || window.adamBridge).getPrefs().catch(() => ({})),
+            window.kappleBridge.getPrefs().catch(() => ({})),
         ]);
         _warmSettingsCache(); // refresh in background while sections render
         if (myGen !== _settingsGen) { _restoreProxy(); return; }
@@ -10969,7 +10969,7 @@ window.kappleGetQueueInfo = function () {
             miniBtn.setAttribute('aria-label', 'Mini Player');
             miniBtn.innerHTML = MINI_SVG;
             _styleNavBtn(miniBtn);
-            miniBtn.onclick = (e) => { e.stopPropagation(); (window.kappleBridge || window.adamBridge)?.toggleMiniPlayer?.(); };
+            miniBtn.onclick = (e) => { e.stopPropagation(); window.kappleBridge?.toggleMiniPlayer?.(); };
             nav.appendChild(miniBtn);
         }
         _positionCogButtons(nav, accountRow, cog, dlBtn, miniBtn);
@@ -11298,7 +11298,7 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
     async function startDownload(info) {
         if (!info) { console.warn('[Kapple Music] startDownload: no track info'); return; }
         const mk = window.MusicKit?.getInstance?.();
-        const prefs = await (window.kappleBridge || window.adamBridge)?.getPrefs().catch(() => ({})) || {};
+        const prefs = await window.kappleBridge?.getPrefs().catch(() => ({})) || {};
         const qual = prefs['downloads-quality'] || _downloadsQuality || 'lossless';
         const isLossless = qual !== 'high-quality';
         const hint = await prefetchHintMeta(info);
@@ -11460,9 +11460,9 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
     // ── Downloads panel ────────────────────────────────────────────────────
     let _panelEl   = null;
     // Inject download panel CSS once
-    if (!document.getElementById("kapple-dl-kf')) {
+    if (!document.getElementById('kapple-dl-kf')) {
         const _kfs = document.createElement('style');
-        _kfs.id = "kapple-dl-kf';
+        _kfs.id = 'kapple-dl-kf';
         _kfs.textContent = `
 @keyframes kapple-dl-pulse{0%,100%{opacity:0.55}50%{opacity:1}}
 @keyframes kapple-dl-dot{0%,100%{opacity:.35}50%{opacity:1}}
@@ -11540,7 +11540,7 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
         title.textContent = 'Downloads';
         title.style.cssText = 'color:#fff;font-size:15px;font-weight:600;letter-spacing:-0.3px;';
         const countBadge = document.createElement('span');
-        countBadge.id = "kapple-dl-count';
+        countBadge.id = 'kapple-dl-count';
         countBadge.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.30);font-weight:400;display:none;';
         titleGroup.append(title, countBadge);
 
@@ -11548,7 +11548,7 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
         btnGroup.style.cssText = 'display:flex;align-items:center;gap:6px;flex-shrink:0;';
 
         const clearBtn = document.createElement('button');
-        clearBtn.id = "kapple-dl-cleardone';
+        clearBtn.id = 'kapple-dl-cleardone';
         clearBtn.textContent = 'Clear done';
         clearBtn.style.cssText = 'background:none;border:none;color:rgba(255,255,255,0.32);cursor:pointer;font-size:12px;padding:3px 7px;border-radius:5px;transition:color 0.15s,background 0.15s;display:none;';
         clearBtn.onmouseenter = () => { clearBtn.style.color = 'rgba(255,255,255,0.75)'; clearBtn.style.background = 'rgba(255,255,255,0.07)'; };
@@ -11599,8 +11599,8 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
         const list = document.getElementById('kapple-downloads-list');
         if (!list) return;
 
-        const countEl = document.getElementById("kapple-dl-count');
-        const clearEl = document.getElementById("kapple-dl-cleardone');
+        const countEl = document.getElementById('kapple-dl-count');
+        const clearEl = document.getElementById('kapple-dl-cleardone');
 
         if (!jobs?.length) {
             list.innerHTML = '';
@@ -11681,14 +11681,14 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
     }
 
     const PILL_CLASS = {
-        queued:      "kapple-dl-pill kapple-dl-pill-q',
-        resolving:   "kapple-dl-pill kapple-dl-pill-r',
-        downloading: "kapple-dl-pill kapple-dl-pill-dl',
-        tagging:     "kapple-dl-pill kapple-dl-pill-dl',
-        moving:      "kapple-dl-pill kapple-dl-pill-dl',
-        done:        "kapple-dl-pill kapple-dl-pill-ok',
-        failed:      "kapple-dl-pill kapple-dl-pill-err',
-        cancelled:   "kapple-dl-pill kapple-dl-pill-x',
+        queued:      'kapple-dl-pill kapple-dl-pill-q',
+        resolving:   'kapple-dl-pill kapple-dl-pill-r',
+        downloading: 'kapple-dl-pill kapple-dl-pill-dl',
+        tagging:     'kapple-dl-pill kapple-dl-pill-dl',
+        moving:      'kapple-dl-pill kapple-dl-pill-dl',
+        done:        'kapple-dl-pill kapple-dl-pill-ok',
+        failed:      'kapple-dl-pill kapple-dl-pill-err',
+        cancelled:   'kapple-dl-pill kapple-dl-pill-x',
     };
 
     function buildJobRow(job) {
@@ -11698,20 +11698,20 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
 
         // Artwork thumbnail
         const art = document.createElement('div');
-        art.className = "kapple-dl-art';
+        art.className = 'kapple-dl-art';
         art.style.cssText = 'width:48px;height:48px;border-radius:9px;flex-shrink:0;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.5);margin-top:1px;';
         const artImg = document.createElement('img');
         artImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:none;';
         art.appendChild(artImg);
         // Skeleton fills art until image loads
         const artSkel = document.createElement('div');
-        artSkel.className = "kapple-dl-art-skel';
+        artSkel.className = 'kapple-dl-art-skel';
         artSkel.style.cssText = 'width:100%;height:100%;';
         art.appendChild(artSkel);
 
         // Right column
         const col = document.createElement('div');
-        col.className = "kapple-dl-col';
+        col.className = 'kapple-dl-col';
         col.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;';
 
         // Row 1: title + cancel
@@ -11719,11 +11719,11 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
         titleRow.style.cssText = 'display:flex;align-items:center;gap:6px;';
 
         const name = document.createElement('span');
-        name.className = "kapple-dl-name';
+        name.className = 'kapple-dl-name';
         name.style.cssText = 'flex:1;color:rgba(255,255,255,0.92);font-size:13px;font-weight:590;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-0.2px;';
 
         const cancelBtn = document.createElement('button');
-        cancelBtn.className = "kapple-dl-cancel';
+        cancelBtn.className = 'kapple-dl-cancel';
         cancelBtn.innerHTML = `<svg viewBox="0 0 10 10" width="9" height="9"><line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
         cancelBtn.style.cssText = 'background:none;border:none;color:rgba(255,255,255,0.20);cursor:pointer;padding:3px;display:flex;align-items:center;flex-shrink:0;border-radius:4px;transition:color 0.15s;';
         cancelBtn.onmouseenter = () => { cancelBtn.style.color = 'rgba(255,255,255,0.65)'; };
@@ -11736,27 +11736,27 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
         metaRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:6px;';
 
         const artist = document.createElement('span');
-        artist.className = "kapple-dl-artist';
+        artist.className = 'kapple-dl-artist';
         artist.style.cssText = 'color:rgba(255,255,255,0.40);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;';
 
         const pill = document.createElement('span');
-        pill.className = "kapple-dl-pill kapple-dl-pill-q';
+        pill.className = 'kapple-dl-pill kapple-dl-pill-q';
         metaRow.append(artist, pill);
 
         // Row 3: progress bar + size (hidden for non-active)
         const progRow = document.createElement('div');
-        progRow.className = "kapple-dl-prog-row';
+        progRow.className = 'kapple-dl-prog-row';
         progRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
         const bar = document.createElement('div');
         bar.style.cssText = 'flex:1;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;';
         const fill = document.createElement('div');
-        fill.className = "kapple-dl-fill';
+        fill.className = 'kapple-dl-fill';
         fill.style.cssText = 'height:100%;border-radius:2px;width:0%;transition:width 0.4s ease;background:rgba(255,255,255,0.85);';
         bar.appendChild(fill);
 
         const sizeLabel = document.createElement('span');
-        sizeLabel.className = "kapple-dl-size';
+        sizeLabel.className = 'kapple-dl-size';
         sizeLabel.style.cssText = 'font-size:10.5px;color:rgba(255,255,255,0.28);flex-shrink:0;font-variant-numeric:tabular-nums;min-width:52px;text-align:right;';
         progRow.append(bar, sizeLabel);
 
@@ -11810,7 +11810,7 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
         if (phase === 'failed' || phase === 'cancelled') {
             if (!retryBtn && col) {
                 retryBtn = document.createElement('button');
-                retryBtn.className = "kapple-dl-retry';
+                retryBtn.className = 'kapple-dl-retry';
                 retryBtn.style.cssText = 'margin-top:2px;padding:3px 10px;background:rgba(252,60,68,0.13);border:0.5px solid rgba(252,60,68,0.30);border-radius:5px;color:#fc3c44;font-size:10px;cursor:pointer;font-weight:500;transition:background 0.15s;align-self:flex-start;';
                 retryBtn.onmouseenter = () => { retryBtn.style.background = 'rgba(252,60,68,0.28)'; };
                 retryBtn.onmouseleave = () => { retryBtn.style.background = 'rgba(252,60,68,0.13)'; };
@@ -11831,7 +11831,7 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
             if (entry && phase === 'failed') {
                 if (!countdownEl && col) {
                     countdownEl = document.createElement('span');
-                    countdownEl.className = "kapple-dl-countdown';
+                    countdownEl.className = 'kapple-dl-countdown';
                     countdownEl.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.28);margin-top:1px;align-self:flex-start;';
                     col.appendChild(countdownEl);
                 }
@@ -11886,7 +11886,7 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
         _applyJobNameArtist(name, artist, hasTitle, job);
 
         if (pill) {
-            pill.className = PILL_CLASS[phase] || "kapple-dl-pill kapple-dl-pill-q';
+            pill.className = PILL_CLASS[phase] || 'kapple-dl-pill kapple-dl-pill-q';
             pill.textContent = PHASE_LABEL[phase] || phase;
         }
 
@@ -11917,7 +11917,7 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
         const seq = ++_pollSeq;
         try {
             const jobs = await fetch(`${ENGINE}/api/v1/export`).then(r => r.json());
-            _dlPrefs = await (window.kappleBridge || window.adamBridge)?.getPrefs().catch(() => ({})) || {};
+            _dlPrefs = await window.kappleBridge?.getPrefs().catch(() => ({})) || {};
             if (seq === _pollSeq) renderJobs(Array.isArray(jobs) ? jobs : []);
         } catch (_) {}
     }

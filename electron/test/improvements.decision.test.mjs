@@ -63,11 +63,3 @@ test('Improvement10: VA-API enabled only because MV video never uses MSE', () =>
     assert.ok(rationale, 'expected the MSE/CHUNK_DEMUXER rationale next to the VA-API enable');
 });
 
-// ── #11 & #12 — NOT function-testable (documented, deliberately skipped) ──
-//
-// These proposals depend on live DOM/MSE + real goroutine timing and cannot be
-// adjudicated by a deterministic unit test. Recorded here so the decision matrix
-// is complete and nobody wastes time trying to unit-test them.
-test('Improvement11: coordinated A/V seek transaction — RUNTIME-ONLY', { skip: 'needs live MSE + <video>/<audio> elements; verify with the app + logs, not a unit test' }, () => {});
-
-test('Improvement12: single cancellation context / goroutine cleanup — INTEGRATION-ONLY', { skip: 'assert with go test -race + goleak in an e2e session, not a pure function test' }, () => {});

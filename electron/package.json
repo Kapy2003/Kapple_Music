@@ -8,9 +8,6 @@
   "engines": {
     "electron": "^43.0.0"
   },
-  "allowScripts": {
-    "abstract-socket@2.1.1": true
-  },
   "scripts": {
     "dist": "npm run build:drm && npm run build:go && npm run build:engine && npm run build:vlc && electron-builder --linux AppImage",
     "postdist": "rm -f dist/builder-debug.yml dist/builder-effective-config.yaml",

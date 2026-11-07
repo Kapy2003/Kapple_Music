@@ -9,8 +9,11 @@
 # Usage: scripts/repack-appimage.sh IN.AppImage OUT.AppImage
 set -euo pipefail
 
-IN="${1:?usage: repack-appimage.sh IN.AppImage OUT.AppImage}"
-OUT="${2:?usage: repack-appimage.sh IN.AppImage OUT.AppImage}"
+IN_ARG="${1:?usage: repack-appimage.sh IN.AppImage OUT.AppImage}"
+OUT_ARG="${2:?usage: repack-appimage.sh IN.AppImage OUT.AppImage}"
+IN="$(cd "$(dirname "$IN_ARG")" && pwd)/$(basename "$IN_ARG")"
+OUT="$(cd "$(dirname "$OUT_ARG")" && pwd)/$(basename "$OUT_ARG")"
+chmod +x "$IN"
 
 RUNTIME_URL="https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64"
 RUNTIME_SHA256="2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"
@@ -29,7 +32,7 @@ fetch "$TOOL_URL" "$TOOL_SHA256" "$work/appimagetool"
 chmod +x "$work/appimagetool"
 
 # --appimage-extract needs no FUSE; run the tool the same way so CI containers need none either.
-( cd "$work" && "$(cd "$(dirname "$IN")" && pwd)/$(basename "$IN")" --appimage-extract >/dev/null )
+( cd "$work" && "$IN" --appimage-extract >/dev/null )
 ARCH=x86_64 "$work/appimagetool" --appimage-extract-and-run --no-appstream \
     --runtime-file "$work/runtime" "$work/squashfs-root" "$OUT"
 chmod +x "$OUT"

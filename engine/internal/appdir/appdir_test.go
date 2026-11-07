@@ -38,10 +38,10 @@ func read(t *testing.T, p string) string {
 
 func TestFreshInstallJustReturnsTheNewDirectory(t *testing.T) {
 	config, cache := setRoots(t)
-	if got, want := Config(), filepath.Join(config, "adam"); got != want {
+	if got, want := Config(), filepath.Join(config, Name); got != want {
 		t.Fatalf("Config() = %q, want %q", got, want)
 	}
-	if got, want := Cache(), filepath.Join(cache, "adam"); got != want {
+	if got, want := Cache(), filepath.Join(cache, Name); got != want {
 		t.Fatalf("Cache() = %q, want %q", got, want)
 	}
 }
@@ -73,7 +73,7 @@ func TestLegacyConfigDirectoriesAreMergedIntoTheNewOne(t *testing.T) {
 
 func TestMergeNeverOverwritesAndKeepsWhatItCannotMove(t *testing.T) {
 	config, _ := setRoots(t)
-	write(t, filepath.Join(config, "adam", "eq.json"), "new")
+	write(t, filepath.Join(config, Name, "eq.json"), "new")
 	write(t, filepath.Join(config, "aml", "eq.json"), "old")
 	write(t, filepath.Join(config, "aml", "hrtf.wav"), "wav")
 

@@ -16,6 +16,7 @@ newer() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" != "$2" ]; }  #
 
 bad=0 checked=0
 while IFS= read -r -d '' f; do
+    case "$f" in *hybris-linker*) continue ;; esac # ponytail: guest Android linker plugin, not host AppImage binary
     [ "$(head -c4 "$f" 2>/dev/null | od -An -c | tr -d ' ')" = '177ELF' ] || continue
     checked=$((checked + 1))
     syms="$(objdump -T "$f" 2>/dev/null | grep -oE 'GLIBC_[0-9][0-9.]*|GLIBC_ABI_[A-Z_]+' | sort -uV || true)"

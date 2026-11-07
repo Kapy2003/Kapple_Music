@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Kapple Music
+GenericName=Music Player
+Comment=Apple Music desktop client for Linux and Windows
+Exec=kapple-music %u
+Icon=io.github.Kapy2003.KappleMusic
+Type=Application
+Categories=AudioVideo;Music;Network;
+StartupWMClass=Kapple Music
+MimeType=x-scheme-handler/kapple-music;x-scheme-handler/kapple;x-scheme-handler/music;x-scheme-handler/musics;x-scheme-handler/itms;x-scheme-handler/itmss;x-scheme-handler/itunes;x-scheme-handler/itals;x-scheme-handler/italss;x-scheme-handler/itvls;x-scheme-handler/itvlss;x-scheme-handler/itsradio;x-scheme-handler/itunesradio;x-scheme-handler/daap;x-scheme-handler/itpc;x-scheme-handler/ame;
+Keywords=music;apple;streaming;

@@ -8920,8 +8920,9 @@ window.kappleGetQueueInfo = function () {
 
     function dot(ok) {
         const d = document.createElement('span');
-        d.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;` +
-            `flex-shrink:0;background:${ok ? '#34c759' : '#ff3b30'};`;
+        const color = ok === true ? '#34c759' : (ok === 'warn' || ok === 'idle' ? '#ff9f0a' : '#ff3b30');
+        d.style.cssText = `display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;` +
+            `flex-shrink:0;background:${color};`;
         return d;
     }
 
@@ -9698,15 +9699,20 @@ window.kappleGetQueueInfo = function () {
             const fpLoading = fp === 'unknown' && procLoading;
             const cbcs = d?.capabilities?.cbcs === true;
             const sessOk = cbcs || fpOk;
-            const sessText = cbcs ? 'active (cbcs)' : fpOk ? 'valid' : (d ? 'none' : 'waiting');
             const sessLoading = !sessOk && procLoading;
+
+            const fpStatusOk = fpOk ? true : (fp === 'unknown' && procOk ? 'idle' : false);
+            const fpText = fpOk ? 'ready' : (fp === 'unknown' && procOk ? 'not activated' : fp);
+            const sessStatusOk = sessOk ? true : (procOk ? 'idle' : false);
+            const sessText = cbcs ? 'active (cbcs)' : fpOk ? 'valid' : (d ? (procOk ? 'not activated' : 'none') : 'waiting');
+
             const backend = d?.backend?.selected
                 ? d.backend.selected[0].toUpperCase() + d.backend.selected.slice(1)
                 : (d ? 'Local Engine' : 'Offline / Starting…');
             return [
                 { label: 'DRM process', ok: procOk, loading: procLoading, text: proc },
-                { label: 'FairPlay',    ok: fpOk,   loading: fpLoading,   text: fp },
-                { label: 'Session',     ok: sessOk, loading: sessLoading, text: sessText,
+                { label: 'FairPlay',    ok: fpStatusOk, loading: fpLoading, text: fpText },
+                { label: 'Session',     ok: sessStatusOk, loading: sessLoading, text: sessText,
                   subtitle: 'Authentication lease with Apple servers' },
                 { label: 'Backend',     text: backend, noDot: true },
             ];

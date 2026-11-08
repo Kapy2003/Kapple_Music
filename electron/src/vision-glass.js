@@ -219,7 +219,9 @@ sheet.replaceSync(`
   }
 
   /* ── Collapsible sidebar ── */
-  body.kapple-sidebar-collapsed nav.navigation {
+  body.kapple-sidebar-collapsed nav.navigation,
+  body.kapple-sidebar-collapsed [data-testid="header"],
+  body.kapple-sidebar-collapsed .app-container > .header {
     display: none !important;
     width: 0 !important;
     min-width: 0 !important;
@@ -229,18 +231,32 @@ sheet.replaceSync(`
     border: none !important;
     opacity: 0 !important;
     pointer-events: none !important;
+    visibility: hidden !important;
   }
-  body.kapple-sidebar-collapsed {
+  body.kapple-sidebar-collapsed,
+  html:has(body.kapple-sidebar-collapsed) {
     --web-navigation-width: 0px !important;
     --navigation-width: 0px !important;
     --web-navigation-sidebar-width: 0px !important;
   }
-  body.kapple-sidebar-collapsed .web-chrome,
-  body.kapple-sidebar-collapsed [class*="web-chrome"],
+  body.kapple-sidebar-collapsed .app-container,
+  body.kapple-sidebar-collapsed [data-testid="app-container"],
   body.kapple-sidebar-collapsed [class*="app-container"],
   body.kapple-sidebar-collapsed [class*="body-container"],
-  body.kapple-sidebar-collapsed [class*="content-container"] {
+  body.kapple-sidebar-collapsed [class*="web-chrome"] {
     grid-template-columns: 0px 1fr !important;
+    grid-template-areas: "structure-main-section structure-main-section" "structure-upsell structure-upsell" "structure-locale-switcher structure-locale-switcher" !important;
+  }
+  body.kapple-sidebar-collapsed .scrollable-page,
+  body.kapple-sidebar-collapsed [data-testid="main-section"],
+  body.kapple-sidebar-collapsed #scrollable-page {
+    grid-column: 1 / -1 !important;
+    padding-inline-start: 0px !important;
+    padding-left: 0px !important;
+    margin-left: 0px !important;
+    transition: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
   body.kapple-sidebar-collapsed main,
   body.kapple-sidebar-collapsed [role="main"] {
@@ -577,6 +593,7 @@ function _findInNavStack(stack, cursor, href) {
     const HOME = 'https://music.apple.com/';
     let stack  = [HOME];   // index 0 = home (oldest)
     let cursor = 0;        // points at current position in stack
+    let positionButtons = null;
 
     const _pushState    = history.pushState.bind(history);
     const _replaceState = history.replaceState.bind(history);
@@ -676,7 +693,12 @@ function _findInNavStack(stack, cursor, href) {
         floatingSidebarBtn.title = title;
         floatingSidebarBtn.setAttribute('aria-label', title);
         try { localStorage.setItem('kapple-sidebar-collapsed', collapsed ? '1' : '0'); } catch (_) {}
-        try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+        if (!collapsed && typeof positionButtons === 'function') {
+            requestAnimationFrame(positionButtons);
+        }
+        requestAnimationFrame(() => {
+            try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+        });
     }
 
     sidebarBtn.addEventListener('click', () => toggleSidebar());
@@ -724,7 +746,7 @@ function _findInNavStack(stack, cursor, href) {
         nav.appendChild(wrap);
 
         // Position buttons to sit inside the header row
-        const positionButtons = () => {
+        positionButtons = () => {
             const navRect    = nav.getBoundingClientRect();
             const headerRect = header.getBoundingClientRect();
             const top    = headerRect.top - navRect.top;

@@ -9,9 +9,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to attach the packages to
-        required: false
-        default: v1.0.0
+        description: Release tag to attach the packages to (e.g. v1.1.1)
+        required: true
 
 permissions:
   contents: write
@@ -52,6 +51,11 @@ jobs:
           KAPPLE_VLC_PLUGINS: /usr/lib/x86_64-linux-gnu/vlc/plugins
       - run: npm ci
         working-directory: electron
+      - name: Set application version from tag
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "Setting application version to $TAG"
+          npm --prefix electron version "$TAG" --no-git-tag-version --allow-same-version
       - name: Build the installer
         env:
           KAPPLE_VLC_LIBDIR: /usr/lib/x86_64-linux-gnu

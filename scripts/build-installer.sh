@@ -40,7 +40,20 @@ done
 die() { echo "Error: $*" >&2; exit 1; }
 
 # ── version ───────────────────────────────────────────────────────────────────
-VERSION=$(node -p "require('$ELECTRON/package.json').version")
+# Resolve version: explicit environment variable > git tag on HEAD > electron/package.json
+GIT_TAG=$(git -C "$REPO" describe --tags --exact-match 2>/dev/null || true)
+if [ -n "${VERSION:-}" ]; then
+    RESOLVED_VER="${VERSION#v}"
+elif [ -n "${GIT_TAG:-}" ]; then
+    RESOLVED_VER="${GIT_TAG#v}"
+else
+    RESOLVED_VER=$(node -p "require('$ELECTRON/package.json').version")
+fi
+VERSION="$RESOLVED_VER"
+CURRENT_PKG_VER=$(node -p "require('$ELECTRON/package.json').version")
+if [ "$VERSION" != "$CURRENT_PKG_VER" ]; then
+    npm --prefix "$ELECTRON" version "$VERSION" --no-git-tag-version --allow-same-version >/dev/null 2>&1 || true
+fi
 COMMIT=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)
 if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
     COMMIT="$COMMIT+dirty"

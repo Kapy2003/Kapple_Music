@@ -1,6 +1,6 @@
 {
   "name": "kapple-music",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Kapple Music, an Apple Music desktop client for Linux",
   "license": "MIT",
   "main": "main.mjs",

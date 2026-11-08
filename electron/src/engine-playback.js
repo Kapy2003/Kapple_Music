@@ -9699,7 +9699,7 @@ window.kappleGetQueueInfo = function () {
             const cbcs = d?.capabilities?.cbcs === true;
             const sessOk = cbcs || fpOk;
             const sessText = cbcs ? 'active (cbcs)' : fpOk ? 'valid' : (d ? 'none' : 'waiting');
-            const sessLoading = !sessOk && (procLoading || proc === 'running');
+            const sessLoading = !sessOk && procLoading;
             const backend = d?.backend?.selected
                 ? d.backend.selected[0].toUpperCase() + d.backend.selected.slice(1)
                 : (d ? 'Local Engine' : 'Offline / Starting…');

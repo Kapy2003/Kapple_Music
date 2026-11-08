@@ -185,7 +185,11 @@ function injectAppleMusicStyles() {
         button, a, input, select, textarea, [role="button"], [role="slider"], [role="search"],
         [class*="btn"], #kapple-settings-cog, #kapple-downloads-btn, #kapple-miniplayer-btn,
         #kapple-nav-buttons, .web-chrome-playback-controls, .web-chrome-playback-lcd,
-        .web-navigation__auth {
+        .web-navigation__auth,
+        body.kapple-sidebar-collapsed [data-testid="header"],
+        body.kapple-sidebar-collapsed .header,
+        body.kapple-sidebar-collapsed header,
+        body.kapple-sidebar-collapsed [class*="navigation__header"] {
             -webkit-app-region: no-drag !important;
         }
         /* Native desktop feel: prevent web text highlighting across navigation and chrome */

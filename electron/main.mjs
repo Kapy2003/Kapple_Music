@@ -1006,7 +1006,11 @@ function createWindow() {
         button, a, input, select, textarea, [role="button"], [role="slider"], [role="search"],
         [class*="btn"], #kapple-settings-cog, #kapple-downloads-btn, #kapple-miniplayer-btn,
         #kapple-nav-buttons, .web-chrome-playback-controls, .web-chrome-playback-lcd,
-        .web-navigation__auth {
+        .web-navigation__auth,
+        body.kapple-sidebar-collapsed [data-testid="header"],
+        body.kapple-sidebar-collapsed .header,
+        body.kapple-sidebar-collapsed header,
+        body.kapple-sidebar-collapsed [class*="navigation__header"] {
             -webkit-app-region: no-drag !important;
         }
         body, html, nav, header, [role="banner"], [role="navigation"] {

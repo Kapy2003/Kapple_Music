@@ -221,17 +221,25 @@ sheet.replaceSync(`
   /* ── Collapsible sidebar ── */
   body.kapple-sidebar-collapsed nav.navigation,
   body.kapple-sidebar-collapsed [data-testid="header"],
-  body.kapple-sidebar-collapsed .app-container > .header {
+  body.kapple-sidebar-collapsed .app-container > .header,
+  body.kapple-sidebar-collapsed .header,
+  body.kapple-sidebar-collapsed header,
+  body.kapple-sidebar-collapsed [class*="navigation__header"] {
     display: none !important;
     width: 0 !important;
     min-width: 0 !important;
     max-width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
     opacity: 0 !important;
     pointer-events: none !important;
     visibility: hidden !important;
+    -webkit-app-region: no-drag !important;
+    z-index: -99999 !important;
   }
   body.kapple-sidebar-collapsed,
   html:has(body.kapple-sidebar-collapsed) {
@@ -254,9 +262,11 @@ sheet.replaceSync(`
     padding-inline-start: 0px !important;
     padding-left: 0px !important;
     margin-left: 0px !important;
+    left: 0px !important;
     transition: none !important;
     width: 100% !important;
     max-width: 100% !important;
+    pointer-events: auto !important;
   }
   body.kapple-sidebar-collapsed main,
   body.kapple-sidebar-collapsed [role="main"] {
@@ -682,11 +692,34 @@ function _findInNavStack(stack, cursor, href) {
     floatingNav.append(floatingSidebarBtn, floatingBack, floatingFwd);
     document.body.appendChild(floatingNav);
 
+    function _syncSidebarDOM(collapsed) {
+        const header = document.querySelector('[data-testid="header"]') ||
+                       document.querySelector('.app-container > .header') ||
+                       document.querySelector('.header:has(nav)') ||
+                       document.querySelector('nav.navigation')?.parentElement;
+        if (header) {
+            if (collapsed) {
+                header.style.setProperty('display', 'none', 'important');
+                header.style.setProperty('pointer-events', 'none', 'important');
+                header.style.setProperty('-webkit-app-region', 'no-drag', 'important');
+                header.style.setProperty('width', '0px', 'important');
+                header.style.setProperty('visibility', 'hidden', 'important');
+            } else {
+                header.style.removeProperty('display');
+                header.style.removeProperty('pointer-events');
+                header.style.removeProperty('-webkit-app-region');
+                header.style.removeProperty('width');
+                header.style.removeProperty('visibility');
+            }
+        }
+    }
+
     function toggleSidebar(forceState) {
         const collapsed = forceState != null
             ? !!forceState
             : !document.body.classList.contains('kapple-sidebar-collapsed');
         document.body.classList.toggle('kapple-sidebar-collapsed', collapsed);
+        _syncSidebarDOM(collapsed);
         const title = collapsed ? 'Show Sidebar (Ctrl+S)' : 'Hide Sidebar (Ctrl+S)';
         sidebarBtn.title = title;
         sidebarBtn.setAttribute('aria-label', title);
@@ -772,5 +805,6 @@ function _findInNavStack(stack, cursor, href) {
     // Re-attach if SPA navigation removes and recreates the nav element
     new MutationObserver(() => {
         if (!document.getElementById('kapple-nav-buttons') && !document.getElementById('adam-nav-buttons') && _findNavHeader()) attach();
+        if (document.body.classList.contains('kapple-sidebar-collapsed')) _syncSidebarDOM(true);
     }).observe(document.documentElement, { childList: true, subtree: true });
 })();

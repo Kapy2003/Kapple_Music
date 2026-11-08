@@ -11,9 +11,14 @@ fi
 bash ../scripts/build-renderer.sh
 
 # ── Build playback engine if missing and tools are available ──────────────────
-if [ ! -f dist/resources/engine ] && command -v go >/dev/null 2>&1 && command -v make >/dev/null 2>&1; then
-    echo "Building playback engine..."
-    (npm run build:drm && npm run build:go) || echo "Playback engine build skipped."
+if [ ! -f dist/resources/engine ]; then
+    if command -v go >/dev/null 2>&1 && command -v make >/dev/null 2>&1; then
+        echo "Building playback engine..."
+        npm run build:drm && npm run build:go
+    else
+        echo "WARNING: Go or Make is missing! Playback engine (dist/resources/engine) could not be built."
+        echo "Lossless (ALAC) playback and in-process DRM require Go and build-essential."
+    fi
 fi
 
 # ── Bundle VLC libs (audio-only subset; no-op when already bundled) ──────────

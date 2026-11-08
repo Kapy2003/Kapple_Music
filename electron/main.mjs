@@ -242,7 +242,7 @@ app.on('second-instance', (_e, argv) => {
 const _resPkgBin  = path.join(process.resourcesPath, engineFileName());
 const _resDevBin  = path.join(__dirname, 'dist', 'resources', engineFileName());
 const ENGINE_BIN  = process.env.KAPPLE_ENGINE_BIN || process.env.ADAM_ENGINE_BIN ||
-    (app.isPackaged ? _resPkgBin : (existsSync(_resDevBin) ? _resDevBin : _resPkgBin));
+    (app.isPackaged ? _resPkgBin : _resDevBin);
 
 // Bundled VLC libs shipped alongside the engine binary so a system VLC
 // upgrade/removal can't break audio playback.
@@ -392,8 +392,13 @@ const engineLifecycle = createEngineLifecycle({
     onStderr: data => console.error('[engine]', data.toString().trimEnd()),
     onError: error => {
         console.error('[Kapple Music] Engine startup failed:', error.message);
-        // A missing binary is not fatal: the renderer falls back to the Apple CDN without the engine.
-        if (!isQuitting && existsSync(ENGINE_BIN)) dialog.showErrorBox('Playback engine could not start', error.message);
+        if (!isQuitting) {
+            dialog.showErrorBox(
+                'Playback Engine Could Not Start',
+                `The playback engine could not be started: ${error.message}\n\n` +
+                (app.isPackaged ? '' : 'If running in development, please compile the engine first:\n  npm run build:drm && npm run build:go\n(or run: bash build.sh)\n')
+            );
+        }
     },
 });
 

@@ -231,6 +231,9 @@ test('Miniplayer & MPRIS volume defaults and synchronization', () => {
     assert.match(MAIN, /CalculateNativeWinOcclusion/);
     // Verify _vlcSyncVolume guards against transient zero volume
     assert.match(PB, /if \(!Number\.isFinite\(volume\) \|\| \(volume <= 0 && !muted\)\) return;/);
+    // Verify mkAudio.muted isolates user muting to speaker/volume controls
+    assert.match(PB, /const isSpeakerAction = Boolean\(/);
+    assert.match(PB, /amp-volume-control/);
 });
 
 test('historyEnabled is off by default and sidebar nav button CSS is not collapsed/disabled', () => {

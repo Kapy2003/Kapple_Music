@@ -4843,15 +4843,23 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
     Object.defineProperty(mkAudio, 'muted', {
         get: () => _vlcMuted,
         set: (v) => {
-            const isUserAction = Boolean(window.event?.isTrusted);
+            const isSpeakerAction = Boolean(
+                window.event?.isTrusted && (
+                    window.event?.composedPath?.().some(el =>
+                        el.matches?.('amp-volume-control, [data-testid*="volume" i], [aria-label*="volume" i], [aria-label*="mute" i]')
+                    ) ||
+                    (window.event?.type === 'keydown' && (window.event?.key === 'm' || window.event?.key === 'M' || window.event?.code === 'KeyM'))
+                )
+            );
             if (!v) {
+                if (!_vlcMuted) return;
                 _vlcMuted = false;
                 _vlcUserMuted = false;
                 _vlcVolume = _vlcPreMuteVol || _vlcVolume || 100;
                 _rememberVlcVolume(_vlcVolume);
                 _postVlcVol(_vlcVolume);
                 _dispatchVolChange();
-            } else if (isUserAction) {
+            } else if (isSpeakerAction) {
                 _vlcMuted = true;
                 _vlcUserMuted = true;
                 _vlcPreMuteVol = _vlcVolume || 100;

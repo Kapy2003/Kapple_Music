@@ -5531,6 +5531,7 @@ function _authStateSetup(mk) {
             try { mode = (await window.kappleBridge?.getPrefs?.())?.themeMode || 'accent'; } catch (_) { mode = 'accent'; }
         }
         document.body?.setAttribute('data-kapple-mode', mode);
+        try { _onAccountSignedIn?.(); } catch (_) {}
     };
     report();
     mk.addEventListener('authorizationStatusDidChange', report);
@@ -6461,8 +6462,8 @@ async function setup() {
         if (!wasLossless && _engineCaps.lossless) _losslessWaitDone = false;
 
         // Sign-in progress: Apple asking for the verification code, success, failure.
-        if (_accountSheet().isOpen()) {
-            _accountSheet().onSnapshot(snap);
+        if (_accountSheetInstance?.isOpen()) {
+            _accountSheetInstance.onSnapshot(snap);
         }
 
         // Binary needs credentials but none are stored — do not open unprompted.
@@ -8980,18 +8981,15 @@ window.kappleGetQueueInfo = function () {
         return r.json();
     }
 
-    // ── Engine Account section (self-contained, mutates its own body) ─────
+    // ── Apple Account section (self-contained, mutates its own body) ─────
     function buildAccountSection(drm, onRefresh) {
-        const { wrap, body } = makeSection('Engine Account');
+        const { wrap, body } = makeSection('Apple Account');
+        const mk = window.MusicKit?.getInstance?.();
+        const isMkAuthorized = Boolean(mk?.isAuthorized || mk?.authorizationStatus === 3 || mk?.musicUserToken);
         const drmState = drm?.state ?? drm ?? {};
-        const managerOk = drmState?.manager === 'ready';
-        const processOk = drmState?.process === 'running';
         const fairplayOk = drmState?.fairplay === 'ready';
         const cbcsOk = drm?.capabilities?.cbcs === true;
-        // "Signed in" means the user completed the engine login (email+password) and
-        // FairPlay/ALAC is ready. A web-session MUT alone gives AAC but is not an
-        // explicit engine login — don't show "Signed in" for that.
-        const isSignedIn = cbcsOk || fairplayOk;
+        const isSignedIn = isMkAuthorized || cbcsOk || fairplayOk;
 
         function renderState() {
             body.innerHTML = '';
@@ -9002,61 +9000,75 @@ window.kappleGetQueueInfo = function () {
             text.style.cssText = 'flex:1;';
             const main = document.createElement('div');
             main.style.cssText = FF + 'font-size:13px;color:rgba(255,255,255,0.85);';
-            main.textContent = isSignedIn ? 'Signed in' : 'Not signed in';
+            main.textContent = isSignedIn ? 'Signed in to Apple Music' : 'Not signed in';
             if (isSignedIn) {
                 // Which account: the email saved when Apple accepted the sign-in.
                 window.kappleBridge?.drmSavedEmail?.().then(e => { if (e) main.textContent = `Signed in as ${e}`; }).catch(() => {});
             }
             text.appendChild(main);
-            if (!isSignedIn) {
-                const sub = document.createElement('div');
-                sub.style.cssText = FF + 'font-size:11px;color:rgba(255,255,255,0.38);margin-top:2px;';
-                if (!managerOk) {
-                    sub.textContent = 'DRM engine not ready. Check engine logs.';
-                } else if (!processOk) {
-                    sub.textContent = 'DRM backend not loaded. Restart the app.';
-                } else {
-                    sub.textContent = 'Sign in to enable lossless and hi-res playback';
-                }
-                text.appendChild(sub);
-            }
+            const sub = document.createElement('div');
+            sub.style.cssText = FF + 'font-size:11px;color:rgba(255,255,255,0.38);margin-top:2px;';
             if (isSignedIn) {
-                const sub = document.createElement('div');
-                sub.style.cssText = FF + 'font-size:11px;color:rgba(255,255,255,0.38);margin-top:2px;';
-                sub.textContent = 'Signing out removes your account from this computer. Signing in again here normally needs no code.';
-                text.appendChild(sub);
+                sub.textContent = 'Full library access, recommendations, and streaming active.';
+            } else {
+                sub.textContent = 'Sign in with your Apple Account to access your music library and recommendations.';
             }
+            text.appendChild(sub);
             row.appendChild(text);
+
             const btn = makeBtn(isSignedIn ? 'Sign Out' : 'Sign In…');
-            btn.onclick = isSignedIn ? () => runSignOut('account', btn, 'Signing out…')
-                : () => _accountSheet().openSignIn();
+            btn.onclick = isSignedIn
+                ? async () => {
+                    btn.disabled = true;
+                    btn.textContent = 'Signing out…';
+                    try {
+                        await window.MusicKit?.getInstance?.()?.unauthorize?.();
+                    } catch (_) {}
+                    try {
+                        await runSignOut('account', btn, 'Signing out…');
+                    } catch (_) {}
+                    onRefresh();
+                }
+                : async () => {
+                    btn.disabled = true;
+                    btn.textContent = 'Opening Sign In…';
+                    try {
+                        await window.MusicKit?.getInstance?.()?.authorize?.();
+                    } catch (err) {
+                        console.warn('[Kapple Music] Authorization error:', err);
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = 'Sign In…';
+                        onRefresh();
+                    }
+                };
             row.appendChild(btn);
             body.appendChild(row);
 
-            // Forget This Device: like Windows' "Deauthorize This Computer". Two clicks,
-            // because the next sign-in then needs a verification code again.
-            const forgetRow = document.createElement('div');
-            forgetRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:0 0 11px 18px;';
-            const forgetText = document.createElement('div');
-            forgetText.style.cssText = FF + 'flex:1;font-size:11px;color:rgba(255,255,255,0.38);';
-            forgetText.textContent = 'Forget this device: Apple will treat this computer as new.';
-            const forget = makeBtn('Forget This Device…');
-            forget.style.fontSize = '12px';
-            forget.style.padding = '4px 10px';
-            let armed = false;
-            forget.onclick = () => {
-                if (!armed) {
-                    armed = true;
-                    forget.textContent = 'Forget Device';
-                    forget.style.background = '#fc3c44';
-                    forget.onmouseenter = forget.onmouseleave = null;
-                    forgetText.textContent = 'The next sign-in will ask for a verification code. Click again to confirm.';
-                    return;
-                }
-                runSignOut('device', forget, 'Forgetting…');
-            };
-            forgetRow.append(forgetText, forget);
-            body.appendChild(forgetRow);
+            if (isSignedIn) {
+                const forgetRow = document.createElement('div');
+                forgetRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:0 0 11px 18px;';
+                const forgetText = document.createElement('div');
+                forgetText.style.cssText = FF + 'flex:1;font-size:11px;color:rgba(255,255,255,0.38);';
+                forgetText.textContent = 'Forget this device: Apple will treat this computer as new on next sign-in.';
+                const forget = makeBtn('Forget This Device…');
+                forget.style.fontSize = '12px';
+                forget.style.padding = '4px 10px';
+                let armed = false;
+                forget.onclick = () => {
+                    if (!armed) {
+                        armed = true;
+                        forget.textContent = 'Forget Device';
+                        forget.style.background = '#fc3c44';
+                        forget.onmouseenter = forget.onmouseleave = null;
+                        forgetText.textContent = 'The next sign-in will ask for a verification code. Click again to confirm.';
+                        return;
+                    }
+                    runSignOut('device', forget, 'Forgetting…');
+                };
+                forgetRow.append(forgetText, forget);
+                body.appendChild(forgetRow);
+            }
 
             if (_accountNote) {
                 const note = document.createElement('div');
@@ -9073,9 +9085,9 @@ window.kappleGetQueueInfo = function () {
             const res = await signOutFlow({
                 engine: ENGINE, scope,
                 clearCredentials: window.kappleBridge?.drmClearCredentials,
-            });
-            if (res.message) _accountNote = { text: res.message, error: true };
-            else if (res.note) _accountNote = { text: res.note, error: false };
+            }).catch(() => ({ ok: true }));
+            if (res?.message) _accountNote = { text: res.message, error: true };
+            else if (res?.note) _accountNote = { text: res.note, error: false };
             onRefresh();
         }
 

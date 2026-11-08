@@ -958,6 +958,28 @@ function createWindow() {
             background: rgba(28, 28, 30, 0.95) !important;
             border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
         }
+        /* Native desktop window dragging & UI feel */
+        .web-chrome, header, [role="banner"], [class*="navigation__header"] {
+            -webkit-app-region: drag !important;
+        }
+        button, a, input, select, textarea, [role="button"], [role="slider"], [role="search"],
+        [class*="btn"], #kapple-settings-cog, #kapple-downloads-btn, #kapple-miniplayer-btn,
+        #kapple-nav-buttons, .web-chrome-playback-controls, .web-chrome-playback-lcd,
+        .web-navigation__auth {
+            -webkit-app-region: no-drag !important;
+        }
+        body, html, nav, header, [role="banner"], [role="navigation"] {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+        }
+        input, textarea, [contenteditable="true"] {
+            user-select: auto !important;
+            -webkit-user-select: auto !important;
+        }
+        /* Strip website footer */
+        footer, .web-footer, .page-footer, [class*="web-footer"], [class*="legal-links"] {
+            display: none !important;
+        }
         /* Software blur layer: two real DOM divs injected by _injectBlurLayer().
            #_kappleBlurBg  — the (already blurred, see _blurredWallpaperUrl) wallpaper image,
                           prepended to body so it renders behind all app content.
@@ -1278,11 +1300,9 @@ function createWindow() {
         footer,
         .web-footer,
         .page-footer,
-        [class*="web-footer"] {
-            background: rgba(255, 255, 255, 0.05) !important;
-            backdrop-filter: blur(20px) !important;
-            -webkit-backdrop-filter: blur(20px) !important;
-            border-top: 0.5px solid rgba(255, 255, 255, 0.08) !important;
+        [class*="web-footer"],
+        [class*="legal-links"] {
+            display: none !important;
         }
     `;
 
@@ -1439,10 +1459,10 @@ function applyTweak(key, value) {
 function buildTweakCSS(p) {
     return [
         p.hideUpsell !== false
-            ? '.native-cta__button,.web-navigation__auth,cwc-upsell-banner,.locale-switcher-banner{display:none!important}'
+            ? '.native-cta__button,cwc-upsell-banner,amp-upsell-banner,[class*="upsell"],[class*="commerce-cta"],[class*="smart-banner"],[class*="open-in-app"],[aria-label*="Open in"],.locale-switcher-banner,[class*="locale-switcher"],[class*="cookie-banner"],[id*="cookie-banner"],footer,.web-footer,.page-footer,[class*="web-footer"],[class*="legal-links"]{display:none!important}'
             : '',
         p.hidePreviewBadge !== false
-            ? 'cwc-badge[kind="preview"],.preview-badge,.web-chrome-playback-lcd__preview-badge{display:none!important}'
+            ? 'cwc-badge[kind="preview"],.preview-badge,[data-testid="preview-badge"],.web-chrome-playback-lcd__preview-badge,.playback-preview-badge{display:none!important}'
             : '',
         p.hideRadio
             ? '.navigation-item__radio{display:none!important}'

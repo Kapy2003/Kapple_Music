@@ -160,8 +160,15 @@ function injectAppleMusicStyles() {
     const style = document.createElement('style');
     style.id = 'kapple-style';
     style.textContent = `
-        .native-cta__button, .web-navigation__auth,
-        cwc-upsell-banner, .locale-switcher-banner { display: none !important; }
+        .native-cta__button,
+        cwc-upsell-banner, amp-upsell-banner, [class*="upsell"],
+        [class*="commerce-cta"], [class*="smart-banner"],
+        [class*="open-in-app"], [aria-label*="Open in"],
+        .locale-switcher-banner, [class*="locale-switcher"],
+        [class*="cookie-banner"], [id*="cookie-banner"],
+        footer, .web-footer, .page-footer, [class*="web-footer"], [class*="legal-links"] {
+            display: none !important;
+        }
         cwc-badge[kind="preview"], .preview-badge,
         [data-testid="preview-badge"],
         .web-chrome-playback-lcd__preview-badge,
@@ -170,6 +177,25 @@ function injectAppleMusicStyles() {
             display: inline-flex; align-items: center;
             margin-left: 6px; opacity: 0.85; pointer-events: none;
             filter: brightness(0) invert(1);
+        }
+        /* Native desktop window dragging */
+        .web-chrome, header, [role="banner"], [class*="navigation__header"] {
+            -webkit-app-region: drag !important;
+        }
+        button, a, input, select, textarea, [role="button"], [role="slider"], [role="search"],
+        [class*="btn"], #kapple-settings-cog, #kapple-downloads-btn, #kapple-miniplayer-btn,
+        #kapple-nav-buttons, .web-chrome-playback-controls, .web-chrome-playback-lcd,
+        .web-navigation__auth {
+            -webkit-app-region: no-drag !important;
+        }
+        /* Native desktop feel: prevent web text highlighting across navigation and chrome */
+        body, html, nav, header, [role="banner"], [role="navigation"] {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+        }
+        input, textarea, [contenteditable="true"] {
+            user-select: auto !important;
+            -webkit-user-select: auto !important;
         }
     `;
     document.head.appendChild(style);

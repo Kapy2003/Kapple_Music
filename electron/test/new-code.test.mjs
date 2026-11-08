@@ -220,3 +220,15 @@ test('pageLogLevel: maps numeric and string console levels', () => {
     assert.equal(ctx.pageLogLevel({ level: 'error' }), 'error');
     assert.equal(ctx.pageLogLevel({}), 'info');
 });
+
+test('Miniplayer & MPRIS volume defaults and synchronization', () => {
+    // Verify main.mjs initializes _lastMprisVolume to 100
+    assert.match(MAIN, /let _lastMprisVolume = 100;/);
+    // Verify createMiniPlayer forwards volume: _lastMprisVolume
+    assert.match(MAIN, /volume:\s*_lastMprisVolume/);
+    // Verify win.webContents unmuted and occlusion disabled
+    assert.match(MAIN, /win\.webContents\.setAudioMuted\(false\)/);
+    assert.match(MAIN, /CalculateNativeWinOcclusion/);
+    // Verify _vlcSyncVolume guards against transient zero volume
+    assert.match(PB, /if \(!Number\.isFinite\(volume\) \|\| \(volume <= 0 && !muted\)\) return;/);
+});

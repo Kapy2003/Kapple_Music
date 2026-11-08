@@ -4806,7 +4806,7 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
         finally { _vlcVolSetting = false; }
     };
     _vlcSyncVolume = (volume, muted) => {
-        if (!Number.isFinite(volume)) return;
+        if (!Number.isFinite(volume) || (volume <= 0 && !muted)) return;
         // A poll reply can predate our own volume POST; never let it undo the user's change.
         if (performance.now() - _vlcVolPostedAt < 1500) return;
         // Compare in the engine's (scaled) domain so rounding cannot fake a mixer change.
@@ -7121,8 +7121,11 @@ async function setup() {
     // to the mini window.
     function _pushMiniState() {
         const a = getMKAudio();
+        const v = _vlcMode
+            ? (a?.muted ? 0 : Math.round((Number.isFinite(a?.volume) ? a.volume * 100 : _vlcVolPersist) || 100))
+            : (a && Number.isFinite(a.volume) ? Math.round(a.volume * 100) : 100);
         window.kappleBridge?.mprisUpdate?.({
-            volume:  a && Number.isFinite(a.volume) ? Math.round(a.volume * 100) : 100,
+            volume:  v,
             repeat:  mk.repeatMode ?? 0,
             shuffle: mk.shuffleMode === 1,
             loved:   !!_lovedState[_currentAssetId],

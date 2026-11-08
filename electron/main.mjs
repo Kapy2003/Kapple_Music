@@ -143,7 +143,7 @@ if (IS_LINUX) {
     // AudioServiceOutOfProcess: keep audio in-process so PulseAudio stream identity
     // matches the desktop name we set.
     app.commandLine.appendSwitch('disable-features',
-        'ExplicitSync,MediaSessionService,AudioServiceOutOfProcess');
+        'ExplicitSync,MediaSessionService,AudioServiceOutOfProcess,CalculateNativeWinOcclusion');
     app.setDesktopName('kapple-music.desktop');
 }
 app.commandLine.appendSwitch('enable-gpu-rasterization');
@@ -850,6 +850,10 @@ function createWindow() {
             additionalArguments: DEBUG_OUTPUT ? ['--kapple-debug=1'] : [],
         },
     });
+    try {
+        win.webContents.setBackgroundThrottling(false);
+        win.webContents.setAudioMuted(false);
+    } catch (_) { }
 
     win.on('page-title-updated', (e) => e.preventDefault());
     let initialLoadRetried = false;
@@ -2045,8 +2049,21 @@ function createMprisPlayer() {
         // MPRIS2 § LoopStatus: client (e.g. KDE media widget) sets loop mode.
         player.on('loopStatus', (status) => sendCmd({ type: 'setLoopStatus', value: status }));
 
+        // Initialize internal volume backing field without emitting PropertiesChanged
+        // over D-Bus before auth handshake finishes.
+        try {
+            if (player.interfaces?.player) {
+                player.interfaces.player._Volume = (_lastMprisVolume ?? 100) / 100;
+            }
+        } catch (_) { }
+
         // MPRIS2 § Volume: client changes volume (0.0–1.0 → 0–100 for renderer).
-        player.on('volume', (val) => sendCmd({ type: 'setVolume', value: Math.round(Number(val) * 100) }));
+        player.on('volume', (val) => {
+            const v = Math.round(Number(val) * 100);
+            if (v === _lastMprisVolume) return;
+            _lastMprisVolume = v;
+            sendCmd({ type: 'setVolume', value: v });
+        });
 
         // MPRIS2 § Rate: we only support 1.0x; reject attempts to change it.
         player.on('rate', () => { try { player.rate = 1.0; } catch (_) { } });
@@ -2104,6 +2121,7 @@ let _lastMprisPosition = 0; // µs
 let _lastMprisShuffle = false;
 let _lastMprisRepeat = null; // 0=none, 1=all, 2=one
 let _lastQualityBadge = null;
+let _lastMprisVolume = 100;
 
 function applyMprisData(data) {
     // Snapshot player — the error event handler may null mprisPlayer
@@ -2139,7 +2157,10 @@ function applyMprisData(data) {
         try { p.loopStatus = loopMap[data.repeat] ?? 'None'; } catch (_) { }
     }
     // Propagate volume from renderer (0–100) to MPRIS (0.0–1.0).
-    if (data.volume != null) try { p.volume = Math.max(0, Math.min(1, data.volume / 100)); } catch (_) { }
+    if (data.volume != null) {
+        _lastMprisVolume = data.volume;
+        try { p.volume = Math.max(0, Math.min(1, data.volume / 100)); } catch (_) { }
+    }
 }
 
 function replayMprisState() {
@@ -2166,6 +2187,7 @@ function replayMprisState() {
             if (_lastMprisPosition) applyMprisData({ position: _lastMprisPosition });
             applyMprisData({ shuffle: _lastMprisShuffle });
             if (_lastMprisRepeat != null) applyMprisData({ repeat: _lastMprisRepeat });
+            applyMprisData({ volume: _lastMprisVolume });
         } catch (_) { }
     }, 400);
 }
@@ -2182,6 +2204,7 @@ ipcMain.on('mpris:update', (_, data) => {
     if (data.shuffle != null) _lastMprisShuffle = data.shuffle;
     if (data.repeat != null) _lastMprisRepeat = data.repeat;
     if ('qualityBadge' in data) _lastQualityBadge = data.qualityBadge;
+    if (data.volume != null) _lastMprisVolume = data.volume;
 
     // Mirror now-playing to the mini player if it's open.
     sendMiniState(data);
@@ -2668,8 +2691,17 @@ function createMiniPlayer() {
         miniWin.show();
         // Hide the main window (Apple's MiniPlayer replaces it) and ask the
         // renderer to push a full now-playing snapshot to the mini.
-        if (win && !win.isDestroyed()) win.hide();
-        sendMiniState({ metadata: _lastMprisMetadata, status: _lastMprisStatus, position: _lastMprisPosition, qualityBadge: _lastQualityBadge });
+        if (win && !win.isDestroyed()) {
+            win.hide();
+            try { win.webContents.setAudioMuted(false); } catch (_) { }
+        }
+        sendMiniState({
+            metadata: _lastMprisMetadata,
+            status: _lastMprisStatus,
+            position: _lastMprisPosition,
+            qualityBadge: _lastQualityBadge,
+            volume: _lastMprisVolume,
+        });
         try { win?.webContents.send('miniplayer:sync'); } catch (_) { }
     });
     miniWin.on('closed', () => { miniWin = null; restoreMainFromMini(); });

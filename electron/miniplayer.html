@@ -257,6 +257,7 @@
   const setVolFill = (v) => $('volrange').style.setProperty('--vol', v + '%');
   const setVolIcon = (v) => { $('volsvg').innerHTML = v <= 0 ? VOL_OFF : VOL_ON; };
   const applyVol = (v) => { $('volrange').value = v; setVolFill(v); setVolIcon(v); };
+  setVolFill(100); setVolIcon(100);
   $('volrange').addEventListener('pointerdown', () => {
     volDragging = true;
     document.body.classList.add('voldragging');

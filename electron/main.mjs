@@ -416,10 +416,11 @@ function stopEngine() { return engineLifecycle.stop(); }
 // The engine only loads them at startup, so it is reloaded once they arrive — right away
 // when nothing is playing, otherwise at the next pause so playback is never cut.
 const FAIRPLAY_LIB64 = path.join(CONFIG_DIR, 'drm', 'rootfs', 'system', 'lib64');
+const FAIRPLAY_REQUIRED = ['libandroidappmusic.so', 'libCoreFP.so', 'libstoreservicescore.so', 'libandroid.so', 'libdl.so'];
 let _reloadEngineOnPause = false;
 function ensureFairPlayLibs() {
     if (!IS_LINUX) return;
-    if (existsSync(path.join(FAIRPLAY_LIB64, 'libandroidappmusic.so'))) return;
+    if (FAIRPLAY_REQUIRED.every(f => existsSync(path.join(FAIRPLAY_LIB64, f)))) return;
     const script = app.isPackaged
         ? path.join(process.resourcesPath, 'fetch-fairplay-libs.sh')
         : path.join(__dirname, '..', 'scripts', 'fetch-fairplay-libs.sh');

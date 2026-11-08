@@ -140,6 +140,7 @@ func (s *SessionManager) accountFiles() []string {
 		filepath.Join(s.baseDir, "drm-state"),
 		filepath.Join(s.baseDir, "session-ready"),
 		filepath.Join(s.baseDir, "2fa.txt"),
+		filepath.Join(s.baseDir, pauseFileName),
 	}
 	return append(paths, fairPlayKeyFiles(s.baseDir)...)
 }

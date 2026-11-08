@@ -17,8 +17,10 @@ set -u
 
 here=$(cd "$(dirname "$0")" && pwd)
 DEST="${XDG_CONFIG_HOME:-$HOME/.config}/kapple-music/drm/rootfs/system/lib64"
-LOCK="$here/fairplay-libs.lock"
-STUBS="$here/android-stubs"
+LOCK="$here/../drm/fairplay-libs.lock"
+[ -f "$LOCK" ] || LOCK="$here/fairplay-libs.lock"
+STUBS="$here/../drm/stubs/out"
+[ -d "$STUBS" ] || STUBS="$here/android-stubs"
 QUIET=0
 MAX_BYTES=67108864 # 64 MiB; the largest library is ~14 MiB
 
@@ -98,12 +100,30 @@ for line in $entries; do
 done
 IFS=$old_ifs
 
+build_stub() {
+    stub_name="$1"
+    map_flag=""
+    if [ "$stub_name" = "libdl.so" ]; then
+        printf "LIBC { };\n" > "$DEST/.libdl.map"
+        map_flag="-Wl,--version-script=$DEST/.libdl.map"
+    fi
+    for compiler in cc gcc clang; do
+        if command -v "$compiler" >/dev/null 2>&1; then
+            echo "char aml_empty_stub;" | "$compiler" -shared -fPIC -nostdlib -O2 -Wl,--hash-style=both -Wl,-soname,"$stub_name" $map_flag -x c - -o "$DEST/$stub_name" 2>/dev/null && chmod 644 "$DEST/$stub_name" && break
+        fi
+    done
+    rm -f "$DEST/.libdl.map"
+}
+
 for stub in libandroid.so libOpenSLES.so libdl.so; do
     if [ -f "$STUBS/$stub" ]; then
         cp -f "$STUBS/$stub" "$DEST/$stub" && chmod 644 "$DEST/$stub"
     elif [ ! -f "$DEST/$stub" ]; then
-        failed="$failed $stub"
-        err "stub $stub not found in $STUBS"
+        build_stub "$stub"
+        if [ ! -f "$DEST/$stub" ]; then
+            failed="$failed $stub"
+            err "stub $stub not found in $STUBS and could not compile"
+        fi
     fi
 done
 

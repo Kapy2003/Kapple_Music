@@ -10,6 +10,11 @@ fi
 # ── Build renderer bundles injected into Apple Music ─────────────────────────
 bash ../scripts/build-renderer.sh
 
+# ── Ensure android stubs exist ──────────────────────────────────────────────
+if [ ! -f ../drm/stubs/out/libandroid.so ] && command -v make >/dev/null 2>&1; then
+    make -C ../drm android-stubs 2>/dev/null || true
+fi
+
 # ── Build playback engine if missing and tools are available ──────────────────
 if [ ! -f dist/resources/engine ]; then
     if command -v go >/dev/null 2>&1 && command -v make >/dev/null 2>&1; then

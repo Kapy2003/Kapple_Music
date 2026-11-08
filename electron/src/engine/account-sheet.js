@@ -187,7 +187,7 @@ export function createAccountSheet({ signIn, submitCode, onDone = () => {}, onCa
                  : 'Lossless and Hi-Res Lossless use Apple’s FairPlay, which needs its own sign-in.')],
             [el(doc, 'div', { class: 'group' }, email, el(doc, 'div', { class: 'pw' }, pass, eye)),
              rememberRow,
-             el(doc, 'div', { class: 'note' }, 'Your password is sent only to Apple. Unless you tick the box, it is not kept on this computer.'),
+             el(doc, 'div', { class: 'note' }, 'Enter your Apple ID email (e.g. user@gmail.com or @icloud.com) or phone number with country code (+91...). Your password is sent only to Apple.'),
              msg],
             [button('Cancel', { onClick: cancel }), primary],
         );
@@ -204,9 +204,16 @@ export function createAccountSheet({ signIn, submitCode, onDone = () => {}, onCa
         if (busy || !ready()) return;
         hidePassword();
         setMessage('');
+        let rawUser = inputs[0].value.trim();
+        if (!rawUser.includes('@') && !rawUser.startsWith('+') && /^\d{10}$/.test(rawUser)) {
+            if (/^[6-9]/.test(rawUser)) {
+                rawUser = '+91' + rawUser;
+                inputs[0].value = rawUser;
+            }
+        }
         setBusy(true, 'Signing In…');
         let res;
-        try { res = await signIn(inputs[0].value.trim(), inputs[1].value, !!remember?.checked); }
+        try { res = await signIn(rawUser, inputs[1].value, !!remember?.checked); }
         catch (e) { res = { ok: false, error: e?.message }; }
         if (view !== 'signin') return; // moved on to the code meanwhile
         if (!res?.ok) { setBusy(false); setMessage(res?.error || 'Could not sign in. Try again.', true); }

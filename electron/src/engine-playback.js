@@ -9089,7 +9089,7 @@ window.kappleGetQueueInfo = function () {
             row.appendChild(btn);
             body.appendChild(row);
 
-            if (isSignedIn && (cbcsOk || fairplayOk)) {
+            if (isSignedIn) {
                 const forgetRow = document.createElement('div');
                 forgetRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:0 0 11px 18px;';
                 const forgetText = document.createElement('div');
@@ -9698,10 +9698,10 @@ window.kappleGetQueueInfo = function () {
         function renderStatusRows(d) {
             const isOnline = Boolean(d?.state?.process && d.state.process !== 'unknown');
             const st = d.state ?? {};
-            const proc = st.process ?? 'offline';
+            const proc = st.process ?? (isOnline ? 'unknown' : 'offline (web fallback)');
             const procOk = proc === 'running';
             const procLoading = proc === 'starting';
-            const fp = st.fairplay ?? 'inactive';
+            const fp = st.fairplay ?? (isOnline ? 'unknown' : 'inactive (web playback)');
             const fpOk = fp === 'ready';
             const fpLoading = fp === 'unknown' && procLoading;
             const cbcs = d?.capabilities?.cbcs === true;
@@ -9713,23 +9713,11 @@ window.kappleGetQueueInfo = function () {
             const backendName = isOnline
                 ? ((n => n ? n[0].toUpperCase() + n.slice(1) : 'Local Engine')(d.backend?.selected))
                 : 'Apple Music Web (Direct Playback)';
-
-            if (!isOnline) {
-                return [
-                    { label: 'Playback engine', text: 'Apple Music Web (Direct Playback)', noDot: true,
-                      subtitle: 'Native MusicKit streaming active' },
-                    { label: 'Account Session', ok: sessOk, text: sessText,
-                      subtitle: 'Direct authentication lease with Apple servers' },
-                    { label: 'Lossless DRM daemon', text: 'Optional — not running', noDot: true,
-                      subtitle: 'Compile via npm run build:drm && npm run build:go for ALAC lossless' },
-                ];
-            }
-
             return [
-                { label: 'DRM process', ok: procOk, loading: procLoading, text: proc },
-                { label: 'FairPlay',    ok: fpOk,   loading: fpLoading,   text: fp },
+                { label: 'DRM process', ok: isOnline ? procOk : true, loading: procLoading, text: proc },
+                { label: 'FairPlay',    ok: isOnline ? fpOk : false,   loading: fpLoading,   text: fp },
                 { label: 'Session',     ok: sessOk, loading: sessLoading, text: sessText,
-                  subtitle: 'Authentication lease with Apple servers' },
+                  subtitle: isOnline ? 'Authentication lease with Apple servers' : 'Web streaming lease with Apple servers' },
                 { label: 'Backend',     text: backendName, noDot: true },
             ];
         }

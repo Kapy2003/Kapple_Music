@@ -51,12 +51,12 @@
   #title { font-size:13px; font-weight:600; letter-spacing:-0.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #artist { font-size:12px; color:var(--fg2); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* Quality badge pill — mirrors the in-player lossless/spatial badge. */
-  #qbadge { display:none; align-items:center; gap:2px; margin-top:3px;
-    border-radius:3px; padding:1px 4px;
-    font-size:7.5px; font-weight:700; letter-spacing:.07em;
-    font-family:var(--font); white-space:nowrap; }
-  #qbadge.lossless { display:inline-flex; color:#30d158; }
-  #qbadge.spatial  { display:inline-flex; color:#bf5af2; }
+  #qbadge { display:none; align-items:center; gap:3px; margin-top:3px;
+    border-radius:4px; padding:1px 5px;
+    font-size:8px; font-weight:600; letter-spacing:.03em;
+    font-family:var(--font); white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+  #qbadge.lossless { display:inline-flex; color:#30d158; background:rgba(48,209,88,0.12); }
+  #qbadge.spatial  { display:inline-flex; color:#bf5af2; background:rgba(191,90,242,0.12); }
   /* Idle LCD — just the Apple mark centered, no text, like the web player bar. */
   #idlelogo { display:none; flex:1; align-items:center; justify-content:center; }
   #idlelogo svg { width:25px; height:31px; fill:#707071; opacity:1; }
@@ -122,7 +122,9 @@
     width:0; overflow:hidden; opacity:0; border-radius:16px;
     display:flex; align-items:center; justify-content:center; box-sizing:content-box;
     transition:width 0.24s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s, padding 0.24s; }
-  #vol:hover #volwrap, #vol:focus-within #volwrap {
+  /* Invisible hit bridge between icon and floating volume pill so hover is never lost */
+  #volwrap::after { content:""; position:absolute; top:100%; left:-10px; right:-10px; height:16px; pointer-events:auto; }
+  #vol:hover #volwrap, #vol:focus-within #volwrap, body.voldragging #volwrap {
     width:82px; opacity:1; padding:8px 12px;
     background:rgba(28,28,30,0.96); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
     box-shadow:0 8px 24px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.12) inset; }
@@ -196,13 +198,23 @@
     if (!qb || (!qb.codec && !qb.spatialAudio)) {
       el.className = ''; el.style.display = 'none'; return;
     }
+    const khz = qb.sampleRate ? `${(qb.sampleRate / 1000).toFixed(qb.sampleRate % 1000 ? 1 : 0)} kHz` : '';
+    const bits = qb.bitDepth ? `${qb.bitDepth}-bit` : '';
+    const res = [bits, khz].filter(Boolean).join(' / ');
+
     if (qb.spatialAudio === 'binaural-lossless' || qb.spatialAudio === 'binaural') {
       el.style.display = ''; el.className = 'spatial';
-      el.innerHTML = 'SPATIAL AUDIO';
+      el.innerHTML = 'SPATIAL AUDIO' + (res ? ` · ${res}` : '');
+      el.title = `Spatial Audio: ${[res, qb.codec?.toUpperCase()].filter(Boolean).join(' ')}`;
     } else if (qb.codec === 'alac') {
       const hi = qb.sampleRate > 48000 || qb.bitDepth > 16;
       el.style.display = ''; el.className = 'lossless';
-      el.innerHTML = LOSSLESS_SVG + (hi ? ' HI-RES' : '');
+      el.innerHTML = LOSSLESS_SVG + ' ' + (hi ? 'HI-RES LOSSLESS' : 'LOSSLESS') + (res ? ` · ${res}` : '');
+      el.title = `${hi ? 'Hi-Res Lossless' : 'Lossless'}: ${[res, 'ALAC'].filter(Boolean).join(' ')}`;
+    } else if (qb.codec) {
+      el.style.display = ''; el.className = 'lossless';
+      el.innerHTML = qb.codec.toUpperCase() + (res ? ` · ${res}` : '');
+      el.title = `${qb.codec.toUpperCase()} ${res}`.trim();
     } else {
       el.className = ''; el.style.display = 'none';
     }
@@ -245,11 +257,26 @@
   const setVolFill = (v) => $('volrange').style.setProperty('--vol', v + '%');
   const setVolIcon = (v) => { $('volsvg').innerHTML = v <= 0 ? VOL_OFF : VOL_ON; };
   const applyVol = (v) => { $('volrange').value = v; setVolFill(v); setVolIcon(v); };
+  $('volrange').addEventListener('pointerdown', () => {
+    volDragging = true;
+    document.body.classList.add('voldragging');
+  });
   $('volrange').addEventListener('input', () => {
-    volDragging = true; const v = +$('volrange').value; if (v > 0) lastVol = v;
+    volDragging = true;
+    document.body.classList.add('voldragging');
+    const v = +$('volrange').value; if (v > 0) lastVol = v;
     setVolFill(v); setVolIcon(v); window.mp.cmd({ type: 'setVolume', value: v });
   });
-  $('volrange').addEventListener('change', () => { volDragging = false; });
+  $('volrange').addEventListener('change', () => {
+    volDragging = false;
+    document.body.classList.remove('voldragging');
+  });
+  window.addEventListener('pointerup', () => {
+    if (volDragging) {
+      volDragging = false;
+      document.body.classList.remove('voldragging');
+    }
+  });
   $('volicon').onclick = () => {
     const cur = +$('volrange').value;
     if (cur > 0) { lastVol = cur; applyVol(0); window.mp.cmd({ type: 'setVolume', value: 0 }); }

@@ -65,6 +65,8 @@ sheet.replaceSync(`
     box-shadow: 1px 0 32px rgba(0,0,0,0.18) !important;
     transition: background 1.4s ease !important;
     color: var(--kapple-nav-text, var(--adam-nav-text, inherit)) !important;
+    contain: layout paint style !important;
+    transform: translateZ(0) !important;
   }
 
   /* Strip backgrounds only from layout shells while hovered — :not(:hover)
@@ -182,16 +184,74 @@ sheet.replaceSync(`
     background-color: transparent !important;
   }
 
-  /* ── Sidebar scrollbar fix ──
+  /* ── Sidebar scroll performance & isolation ──
      Apple sets scrollbar-width:thin on the nav container, which suppresses
      ::-webkit-scrollbar pseudo-elements entirely in Chrome 121+. Force auto
-     to restore webkit control, then apply custom styles. */
+     to restore webkit control, then apply custom styles and GPU layer promotion. */
+  [class*="navigation__scrollable"] {
+    will-change: scroll-position, transform !important;
+    transform: translateZ(0) !important;
+    contain: content !important;
+    overscroll-behavior: contain !important;
+  }
   [class*="navigation__scrollable"][class*="svelte"] { scrollbar-width: auto !important; }
   [class*="navigation__scrollable"]::-webkit-scrollbar       { width: 3px !important; }
   [class*="navigation__scrollable"]::-webkit-scrollbar-track { background: transparent !important; box-shadow: none !important; }
   [class*="navigation__scrollable"]::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.28) !important; border-radius: 9999px !important; border: none !important; }
   [class*="navigation__scrollable"]::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.55) !important; }
   [class*="navigation__scrollable"]:hover::-webkit-scrollbar { width: 7px !important; }
+
+  /* ── Hardware-accelerated compositing for lyrics & animations ── */
+  [data-testid="lyrics-fullscreen-modal"],
+  [class*="lyrics-fullscreen"],
+  [class*="lyrics-display"],
+  [class*="lyrics-page"],
+  amp-lyrics,
+  #kapple-lyrics-overlay {
+    contain: layout paint style !important;
+    transform: translateZ(0) !important;
+    will-change: transform !important;
+    backface-visibility: hidden !important;
+  }
+  [class*="lyrics-line"] {
+    will-change: transform, opacity !important;
+    transform: translateZ(0) !important;
+  }
+
+  /* ── Collapsible sidebar ── */
+  body.kapple-sidebar-collapsed nav.navigation {
+    display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  body.kapple-sidebar-collapsed [class*="app-container"],
+  body.kapple-sidebar-collapsed [class*="body-container"],
+  body.kapple-sidebar-collapsed [class*="content-container"] {
+    grid-template-columns: 0px 1fr !important;
+  }
+  body.kapple-sidebar-collapsed main {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  #kapple-sidebar-floating-nav {
+    display: none;
+    position: fixed;
+    top: 14px;
+    left: 16px;
+    z-index: 99999;
+    gap: 8px;
+    align-items: center;
+    -webkit-app-region: no-drag;
+  }
+  body.kapple-sidebar-collapsed #kapple-sidebar-floating-nav {
+    display: flex !important;
+  }
 
   /* ── Account button — strip pill, keep context menu ──
      Apple: .account-menu.svelte-XXXX.account-menu--expanded = 3 classes (0,3,0).
@@ -535,8 +595,16 @@ function _findInNavStack(stack, cursor, href) {
     const wrap = document.createElement('div');
     wrap.id = 'kapple-nav-buttons';
 
+    const SIDEBAR_SVG  = `<svg viewBox="0 0 14 14" style="stroke-width:1.5"><rect x="1.5" y="2" width="11" height="10" rx="2" fill="none"/><line x1="5" y1="2" x2="5" y2="12"/></svg>`;
     const chevronLeft  = `<svg viewBox="0 0 14 14"><polyline points="9,2 4,7 9,12"/></svg>`;
     const chevronRight = `<svg viewBox="0 0 14 14"><polyline points="5,2 10,7 5,12"/></svg>`;
+
+    const sidebarBtn = document.createElement('button');
+    sidebarBtn.className = 'kapple-nav-btn';
+    sidebarBtn.innerHTML = SIDEBAR_SVG;
+    sidebarBtn.title = 'Hide Sidebar (Ctrl+S)';
+    sidebarBtn.setAttribute('aria-label', 'Hide Sidebar');
+
     const back = document.createElement('button');
     back.className = 'kapple-nav-btn';
     back.innerHTML = chevronLeft;
@@ -551,15 +619,78 @@ function _findInNavStack(stack, cursor, href) {
     fwd.setAttribute('aria-label', 'Go forward');
     fwd.disabled = true;
 
+    // Floating navigation row for when the sidebar is collapsed
+    const floatingNav = document.createElement('div');
+    floatingNav.id = 'kapple-sidebar-floating-nav';
+
+    const floatingSidebarBtn = document.createElement('button');
+    floatingSidebarBtn.className = 'kapple-nav-btn';
+    floatingSidebarBtn.innerHTML = SIDEBAR_SVG;
+    floatingSidebarBtn.title = 'Show Sidebar (Ctrl+S)';
+    floatingSidebarBtn.setAttribute('aria-label', 'Show Sidebar');
+
+    const floatingBack = document.createElement('button');
+    floatingBack.className = 'kapple-nav-btn';
+    floatingBack.innerHTML = chevronLeft;
+    floatingBack.title = 'Back';
+    floatingBack.setAttribute('aria-label', 'Go back');
+    floatingBack.disabled = true;
+
+    const floatingFwd = document.createElement('button');
+    floatingFwd.className = 'kapple-nav-btn';
+    floatingFwd.innerHTML = chevronRight;
+    floatingFwd.title = 'Forward';
+    floatingFwd.setAttribute('aria-label', 'Go forward');
+    floatingFwd.disabled = true;
+
+    floatingNav.append(floatingSidebarBtn, floatingBack, floatingFwd);
+    document.body.appendChild(floatingNav);
+
+    function toggleSidebar(forceState) {
+        const collapsed = forceState != null
+            ? !forceState
+            : !document.body.classList.contains('kapple-sidebar-collapsed');
+        document.body.classList.toggle('kapple-sidebar-collapsed', collapsed);
+        const title = collapsed ? 'Show Sidebar (Ctrl+S)' : 'Hide Sidebar (Ctrl+S)';
+        sidebarBtn.title = title;
+        sidebarBtn.setAttribute('aria-label', title);
+        floatingSidebarBtn.title = title;
+        floatingSidebarBtn.setAttribute('aria-label', title);
+        try { localStorage.setItem('kapple-sidebar-collapsed', collapsed ? '1' : '0'); } catch (_) {}
+    }
+
+    sidebarBtn.addEventListener('click', () => toggleSidebar());
+    floatingSidebarBtn.addEventListener('click', () => toggleSidebar());
+
+    try {
+        if (localStorage.getItem('kapple-sidebar-collapsed') === '1') {
+            toggleSidebar(false);
+        }
+    } catch (_) {}
+
+    window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 's' || e.key === 'S' || e.key === 'b' || e.key === 'B')) {
+            e.preventDefault();
+            toggleSidebar();
+        }
+    });
+
     function syncButtons() {
-        back.disabled = cursor <= 0;
-        fwd.disabled  = cursor >= stack.length - 1;
+        const canBack = cursor > 0;
+        const canFwd  = cursor < stack.length - 1;
+        back.disabled = !canBack;
+        fwd.disabled  = !canFwd;
+        floatingBack.disabled = !canBack;
+        floatingFwd.disabled  = !canFwd;
     }
 
     // Click handlers only call the browser API — popstate updates the cursor.
     back.addEventListener('click', () => { if (cursor > 0) history.back(); });
     fwd.addEventListener('click',  () => { if (cursor < stack.length - 1) history.forward(); });
+    floatingBack.addEventListener('click', () => { if (cursor > 0) history.back(); });
+    floatingFwd.addEventListener('click',  () => { if (cursor < stack.length - 1) history.forward(); });
 
+    wrap.appendChild(sidebarBtn);
     wrap.appendChild(back);
     wrap.appendChild(fwd);
 

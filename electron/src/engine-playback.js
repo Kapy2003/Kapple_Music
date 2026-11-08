@@ -7126,6 +7126,7 @@ async function setup() {
             repeat:  mk.repeatMode ?? 0,
             shuffle: mk.shuffleMode === 1,
             loved:   !!_lovedState[_currentAssetId],
+            qualityBadge: _qualityBadgeInfo,
         });
     }
     _pushMiniStateRef = _pushMiniState;

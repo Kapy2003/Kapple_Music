@@ -147,6 +147,8 @@ if (IS_LINUX) {
     app.setDesktopName('kapple-music.desktop');
 }
 app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
 // Music player: allow audio.play() without a live user gesture. Without this,
 // _nativePlay() called from the async canplay handler is blocked by Chromium's
 // autoplay policy when the engine takes >5 s to start streaming.
@@ -841,6 +843,7 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.cjs'),
             contextIsolation: true,
             nodeIntegration: false,
+            backgroundThrottling: false,
             sandbox: _hasSandbox,
             partition: 'persist:apple-music',
             devTools: !app.isPackaged,
@@ -2100,6 +2103,7 @@ let _lastMprisMetadata = null;
 let _lastMprisPosition = 0; // µs
 let _lastMprisShuffle = false;
 let _lastMprisRepeat = null; // 0=none, 1=all, 2=one
+let _lastQualityBadge = null;
 
 function applyMprisData(data) {
     // Snapshot player — the error event handler may null mprisPlayer
@@ -2177,6 +2181,7 @@ ipcMain.on('mpris:update', (_, data) => {
     if (data.position != null) _lastMprisPosition = data.position;
     if (data.shuffle != null) _lastMprisShuffle = data.shuffle;
     if (data.repeat != null) _lastMprisRepeat = data.repeat;
+    if ('qualityBadge' in data) _lastQualityBadge = data.qualityBadge;
 
     // Mirror now-playing to the mini player if it's open.
     sendMiniState(data);
@@ -2664,7 +2669,7 @@ function createMiniPlayer() {
         // Hide the main window (Apple's MiniPlayer replaces it) and ask the
         // renderer to push a full now-playing snapshot to the mini.
         if (win && !win.isDestroyed()) win.hide();
-        sendMiniState({ metadata: _lastMprisMetadata, status: _lastMprisStatus, position: _lastMprisPosition });
+        sendMiniState({ metadata: _lastMprisMetadata, status: _lastMprisStatus, position: _lastMprisPosition, qualityBadge: _lastQualityBadge });
         try { win?.webContents.send('miniplayer:sync'); } catch (_) { }
     });
     miniWin.on('closed', () => { miniWin = null; restoreMainFromMini(); });

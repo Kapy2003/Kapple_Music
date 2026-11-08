@@ -910,7 +910,6 @@ func findSessionReadyMarker(baseDir string) string {
 	return ""
 }
 
-
 type authSrcHolder struct{ src AuthSource }
 
 // twoFactorTimeout bounds how long sign-in waits for the code the user types in.

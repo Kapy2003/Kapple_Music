@@ -15,26 +15,4 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$REPO/electron"
-
-ESB=(npx esbuild --bundle --format=iife --log-level=warning)
-
-"${ESB[@]}" src/engine-playback.js --outfile=engine-bundle.js
-"${ESB[@]}" src/engine-sse.js --global-name=_kappleSSEMod --outfile=engine-sse-bundle.js
-"${ESB[@]}" src/smart-cache.js --outfile=smart-cache-bundle.js
-cp src/vision-glass.js vision-bundle.js
-
-
-# A bundle with module syntax left in it would throw when injected as a plain script.
-for b in engine-bundle.js engine-sse-bundle.js smart-cache-bundle.js; do
-    if grep -qE '^\s*(import\s.+\sfrom\s|export\s)' "$b"; then
-        echo "error: $b still contains import/export" >&2
-        exit 1
-    fi
-done
-
-UNPACKED="dist/linux-unpacked/resources"
-if [ -d "$UNPACKED" ]; then
-    cp engine-bundle.js engine-sse-bundle.js smart-cache-bundle.js vision-bundle.js "$UNPACKED/"
-fi
-echo "renderer bundles built"
+exec node "$REPO/electron/build-renderer.mjs"

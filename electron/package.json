@@ -9,12 +9,12 @@
     "electron": "^43.0.0"
   },
   "scripts": {
-    "start": "bash ../scripts/build-renderer.sh && electron .",
+    "start": "node build-renderer.mjs && electron .",
     "dist": "npm run build:drm && npm run build:go && npm run build:engine && npm run build:vlc && electron-builder --linux AppImage",
     "postdist": "rm -f dist/builder-debug.yml dist/builder-effective-config.yaml",
     "clean": "bash ../scripts/clean.sh",
     "build:drm": "make -C ../drm libdrm_client.so android-stubs",
-    "build:engine": "bash ../scripts/build-renderer.sh",
+    "build:engine": "node build-renderer.mjs",
     "build:go": "bash ../scripts/build-engine.sh dist/resources -ldflags=\"-w -s\" -trimpath",
     "build:vlc": "bash ../scripts/bundle-vlc.sh",
     "lint": "eslint ."

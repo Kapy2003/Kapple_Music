@@ -828,10 +828,17 @@ function setupDebugLogging(win) {
 
 ipcMain.on('app:restart', () => { app.relaunch(); app.quit(); });
 
+const _appIconPath = app.isPackaged
+    ? (existsSync(path.join(process.resourcesPath, 'icon.png'))
+        ? path.join(process.resourcesPath, 'icon.png')
+        : path.join(__dirname, 'icon.png'))
+    : path.join(__dirname, 'icon.png');
+
 function createWindow() {
     win = new BrowserWindow({
         width: 1200,
         height: 800,
+        icon: _appIconPath,
         // Fully transparent so the compositor (Hyprland/KWin) can render
         // the desktop behind the window with its own blur effect, giving
         // us the visionOS "glass over room" look for free.
@@ -2660,6 +2667,7 @@ function createMiniPlayer() {
     miniWin = new BrowserWindow({
         width: 360,
         height: 150,
+        icon: _appIconPath,
         useContentSize: true,
         frame: false,
         // Both windows expose the same per-window Composition host backdrop.

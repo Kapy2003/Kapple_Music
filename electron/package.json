@@ -53,6 +53,10 @@
         "to": "icon.png"
       },
       {
+        "from": "icon.svg",
+        "to": "icon.svg"
+      },
+      {
         "from": "../scripts/fetch-fairplay-libs.sh",
         "to": "fetch-fairplay-libs.sh"
       },

@@ -232,3 +232,22 @@ test('Miniplayer & MPRIS volume defaults and synchronization', () => {
     // Verify _vlcSyncVolume guards against transient zero volume
     assert.match(PB, /if \(!Number\.isFinite\(volume\) \|\| \(volume <= 0 && !muted\)\) return;/);
 });
+
+test('historyEnabled is off by default and sidebar nav button CSS is not collapsed/disabled', () => {
+    // 1. History / Up Next toggle default is false
+    assert.match(PB, /let _histEnabled = false;/);
+    assert.match(PB, /const histIsEnabled = histEnabledRaw === 'true' \|\| histEnabledRaw === true;/);
+
+    // 2. Navigation buttons CSS does not match bare .kapple-nav-btn for pseudo-classes
+    const VG = readFileSync(path.join(dir, '..', 'src', 'vision-glass.js'), 'utf8');
+    assert.doesNotMatch(VG, /\.kapple-nav-btn,\s*\.adam-nav-btn:disabled/);
+    assert.match(VG, /\.kapple-nav-btn:disabled,\s*\.adam-nav-btn:disabled/);
+
+    // 3. Application window icon wired
+    assert.match(MAIN, /icon:\s*_appIconPath/);
+
+    // 4. Installer header installs both SVG and PNG icons to hicolor and pixmaps
+    const HDR = readFileSync(path.join(dir, '..', '..', 'scripts', 'installer-header.sh'), 'utf8');
+    assert.match(HDR, /ICON_SCALABLE_DIR=/);
+    assert.match(HDR, /kapple-music\.svg/);
+});

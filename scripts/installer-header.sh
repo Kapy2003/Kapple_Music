@@ -18,6 +18,8 @@ INSTALL_DIR="${XDG_DATA_HOME:-$HOME/.local/lib}/kapple-music"
 BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
 DESKTOP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/512x512/apps"
+ICON_SCALABLE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/apps"
+PIXMAPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/pixmaps"
 
 for arg in "$@"; do
     case "$arg" in
@@ -60,6 +62,8 @@ if [ "$SYSTEM_INSTALL" -eq 1 ]; then
     BIN_DIR="/usr/local/bin"
     DESKTOP_DIR="/usr/share/applications"
     ICON_DIR="/usr/share/icons/hicolor/512x512/apps"
+    ICON_SCALABLE_DIR="/usr/share/icons/hicolor/scalable/apps"
+    PIXMAPS_DIR="/usr/share/pixmaps"
     if [ "$(id -u)" -ne 0 ]; then
         echo "Error: --system requires root (run with sudo)" >&2
         exit 1
@@ -78,6 +82,10 @@ if [ "$UNINSTALL" -eq 1 ]; then
     done
     rm -f  "$DESKTOP_DIR/kapple-music.desktop"
     rm -f  "$ICON_DIR/kapple-music.png"
+    rm -f  "$ICON_SCALABLE_DIR/kapple-music.svg"
+    rm -f  "$PIXMAPS_DIR/kapple-music.png"
+    rm -f  "$PIXMAPS_DIR/kapple-music.svg"
+    gtk-update-icon-cache -f -t "$(dirname "$(dirname "$ICON_DIR")")" 2>/dev/null || true
     update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
     echo "Uninstalled Kapple Music."
     exit 0
@@ -112,7 +120,7 @@ done
 # launchers or desktop entries.
 echo "Installing Kapple Music $VERSION..."
 mkdir -p "$INSTALL_DIR"
-mkdir -p "$BIN_DIR" "$DESKTOP_DIR" "$ICON_DIR"
+mkdir -p "$BIN_DIR" "$DESKTOP_DIR" "$ICON_DIR" "$ICON_SCALABLE_DIR" "$PIXMAPS_DIR"
 
 # Extract payload (everything after __PAYLOAD_BELOW__)
 PAYLOAD_LINE=$(grep -a -n '^__PAYLOAD_BELOW__$' "$0" | cut -d: -f1)
@@ -140,7 +148,7 @@ exec "$INSTALL_DIR/kapple-music" --no-sandbox "\$@"
 EOF
 chmod +x "$BIN_DIR/kapple-music"
 
-# Install icon: look inside resources/ for the bundled icon
+# Install icon: look inside resources/ for the bundled icon (both PNG and SVG)
 APP_ICON=""
 for icon_candidate in \
     "$INSTALL_DIR/resources/icon.png" \
@@ -153,7 +161,25 @@ for icon_candidate in \
 done
 if [ -n "$APP_ICON" ]; then
     cp "$APP_ICON" "$ICON_DIR/kapple-music.png" 2>/dev/null || true
+    cp "$APP_ICON" "$PIXMAPS_DIR/kapple-music.png" 2>/dev/null || true
 fi
+
+APP_ICON_SVG=""
+for icon_candidate in \
+    "$INSTALL_DIR/resources/icon.svg" \
+    "$INSTALL_DIR/resources/app.asar.unpacked/icon.svg" \
+    "$INSTALL_DIR/icon.svg"; do
+    if [ -f "$icon_candidate" ]; then
+        APP_ICON_SVG="$icon_candidate"
+        break
+    fi
+done
+if [ -n "$APP_ICON_SVG" ]; then
+    cp "$APP_ICON_SVG" "$ICON_SCALABLE_DIR/kapple-music.svg" 2>/dev/null || true
+    cp "$APP_ICON_SVG" "$PIXMAPS_DIR/kapple-music.svg" 2>/dev/null || true
+fi
+
+gtk-update-icon-cache -f -t "$(dirname "$(dirname "$ICON_DIR")")" 2>/dev/null || true
 
 # Install desktop entry
 # StartupWMClass matches the Chromium window class so GNOME/KDE pin to this entry.
@@ -173,6 +199,7 @@ Terminal=false
 Keywords=music;apple;player;streaming;audio;
 EOF
 chmod 644 "$DESKTOP_DIR/kapple-music.desktop"
+update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
 
 # Register kapple-music:// scheme handler
 xdg-mime default kapple-music.desktop x-scheme-handler/kapple-music 2>/dev/null || true

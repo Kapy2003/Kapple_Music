@@ -6074,28 +6074,45 @@ let _reemitMpris    = null; // set by sendMprisMetadata; refreshes MPRIS rating
 let _pushMiniStateRef = null; // set in setup; pushes volume/repeat/shuffle/loved to the mini
 
 async function _toggleLove() {
-    const mk = _mkInstance, id = _currentAssetId;
-    if (!mk || !id) return;
+    const mk = _mkInstance;
+    const id = _currentAssetId || _extractItemId(mk?.nowPlayingItem);
+    if (!id) return;
     try {
+        const nativeFav = document.querySelector(
+            'amp-playback-controls button[aria-label*="Favorite" i], amp-playback-controls button[aria-label*="Favorit" i], amp-playback-controls button[data-testid*="favorite" i], [data-testid="favorite-button"], [data-testid="action-bar-favorite"]'
+        );
         let loved = _lovedState[id];
         if (loved === undefined) {
-            // Fetch current rating from Apple (value === 1 means loved).
-            try {
-                const r = await mk.api.music(`/v1/me/ratings/songs/${id}`);
-                loved = (r?.data?.data?.[0]?.attributes?.value === 1);
-            } catch (_) { loved = false; }
+            if (nativeFav) {
+                const label = nativeFav.getAttribute('aria-label') || '';
+                const pressed = nativeFav.getAttribute('aria-pressed');
+                loved = pressed === 'true' || /remove|undo|favorited/i.test(label);
+            } else if (mk?.api?.music) {
+                // Fetch current rating from Apple (value === 1 means loved).
+                try {
+                    const r = await mk.api.music(`/v1/me/ratings/songs/${id}`);
+                    loved = (r?.data?.data?.[0]?.attributes?.value === 1);
+                } catch (_) { loved = false; }
+            } else {
+                loved = false;
+            }
         }
-        if (loved) {
-            await mk.api.music(`/v1/me/ratings/songs/${id}`, {}, { fetchOptions: { method: 'DELETE' } });
-            _lovedState[id] = false;
-            _kappleToast('Removed from Favourites');
-        } else {
-            await mk.api.music(`/v1/me/ratings/songs/${id}`, {},
-                { fetchOptions: { method: 'PUT', body: JSON.stringify({ type: 'rating', attributes: { value: 1 } }) } });
-            _lovedState[id] = true;
-            _kappleToast('♥  Loved');
+        loved = !loved;
+        _lovedState[id] = loved;
+
+        if (nativeFav) {
+            nativeFav.click();
+        } else if (mk?.api?.music) {
+            if (!loved) {
+                await mk.api.music(`/v1/me/ratings/songs/${id}`, {}, { fetchOptions: { method: 'DELETE' } }).catch(() => {});
+            } else {
+                await mk.api.music(`/v1/me/ratings/songs/${id}`, {},
+                    { fetchOptions: { method: 'PUT', body: JSON.stringify({ type: 'rating', attributes: { value: 1 } }) } }).catch(() => {});
+            }
         }
+        _kappleToast(loved ? '♥  Loved' : 'Removed from Favourites');
         _reemitMpris?.(); // push the new rating to the desktop applet
+        _pushMiniStateRef?.();
     } catch (e) {
         console.warn('[Kapple Music Love] toggle failed:', e?.message);
         _kappleToast('Could not update Favourite');
@@ -6305,7 +6322,7 @@ function _histInjectStyles() {
     document.head.appendChild(s);
 }
 
-let _histEnabled = true;
+let _histEnabled = false;
 
 function _histInject() {
     const panel = document.querySelector('.side-panel');
@@ -6342,7 +6359,7 @@ async function setupQueueHistory(mk) {
     // Load history-enabled pref and history from encrypted store before first render.
     try {
         const pref = await window.kappleBridge?.storeRead('historyEnabled');
-        if (pref !== null && pref !== undefined) _histEnabled = pref !== 'false' && pref !== false;
+        if (pref !== null && pref !== undefined) _histEnabled = pref === 'true' || pref === true;
     } catch (_) {}
     await _histLoadAsync();
 
@@ -6888,7 +6905,15 @@ async function setup() {
             return;
         }
 
-        if (!cur) return; // no container yet
+        if (!cur) {
+            if (_mkOrigSkipToNext) {
+                _mkOrigSkipToNext();
+            } else {
+                const nextBtn = document.querySelector('amp-playback-controls button[aria-label*="Next" i], amp-playback-controls [data-testid*="next" i]');
+                if (nextBtn) nextBtn.click();
+            }
+            return;
+        }
 
         if (ii + 1 < cur.items.length) {
             // Next item within the same container.
@@ -6920,7 +6945,12 @@ async function setup() {
 
     async function _kapplePrev() {
         const ci = _sessionContainerIdx, ii = _sessionItemIdx;
-        if (ci < 0) return; // no container yet
+        const cur = _sessionContainers[ci];
+        if (ci < 0 || !cur) {
+            const prevBtn = document.querySelector('amp-playback-controls button[aria-label*="Previous" i], amp-playback-controls [data-testid*="previous" i]');
+            if (prevBtn) prevBtn.click();
+            return;
+        }
         if (ii > 0) {
             // Previous item within the same container.
             await _kappleGoto(ci, ii - 1);
@@ -7101,6 +7131,7 @@ async function setup() {
             metadata: meta,
             shuffle: mk.shuffleMode === 1,
         });
+        _pushMiniState();
     }
     // Expose a re-emit so _toggleLove (module scope) can refresh MPRIS rating.
     _reemitMpris = () => { try { sendMprisMetadata(mk.nowPlayingItem); } catch (_) {} };
@@ -7121,14 +7152,32 @@ async function setup() {
     // to the mini window.
     function _pushMiniState() {
         const a = getMKAudio();
-        const v = _vlcMode
-            ? (a?.muted ? 0 : Math.round((Number.isFinite(a?.volume) ? a.volume * 100 : _vlcVolPersist) || 100))
-            : (a && Number.isFinite(a.volume) ? Math.round(a.volume * 100) : 100);
+        let v;
+        if (_kappleTransitioning || _kappleInGotoTransition) {
+            v = _vlcVolPersist || (a && Number.isFinite(a.volume) && a.volume > 0 ? Math.round(a.volume * 100) : 100);
+        } else if (_vlcMode || _vlcLive) {
+            v = a?.muted ? 0 : Math.round((Number.isFinite(a?.volume) && a.volume > 0 ? a.volume * 100 : _vlcVolPersist) || 100);
+        } else {
+            v = a?.muted ? 0 : (a && Number.isFinite(a.volume) ? Math.round(a.volume * 100) : (_vlcVolPersist || 100));
+        }
+        const curId = _currentAssetId || _extractItemId(mk?.nowPlayingItem);
+        let loved = curId ? _lovedState[curId] : false;
+        if (loved === undefined && curId) {
+            const nativeFav = document.querySelector(
+                'amp-playback-controls button[aria-label*="Favorite" i], amp-playback-controls button[aria-label*="Favorit" i], amp-playback-controls button[data-testid*="favorite" i]'
+            );
+            if (nativeFav) {
+                const label = nativeFav.getAttribute('aria-label') || '';
+                const pressed = nativeFav.getAttribute('aria-pressed');
+                loved = pressed === 'true' || /remove|undo|favorited/i.test(label);
+                _lovedState[curId] = loved;
+            }
+        }
         window.kappleBridge?.mprisUpdate?.({
             volume:  v,
             repeat:  mk.repeatMode ?? 0,
             shuffle: mk.shuffleMode === 1,
-            loved:   !!_lovedState[_currentAssetId],
+            loved:   !!loved,
             qualityBadge: _qualityBadgeInfo,
         });
     }
@@ -10784,7 +10833,7 @@ window.kappleGetQueueInfo = function () {
     async function _buildHistorySection() {
         const { wrap, body: histBody } = makeSection('History');
         const histEnabledRaw = await window.kappleBridge?.storeRead('historyEnabled').catch(() => null);
-        const histIsEnabled = histEnabledRaw !== 'false' && histEnabledRaw !== false;
+        const histIsEnabled = histEnabledRaw === 'true' || histEnabledRaw === true;
         const histToggle = _kappleIOSToggle(histIsEnabled, async (v) => {
             _histEnabled = v;
             await window.kappleBridge?.storeWrite('historyEnabled', String(v)).catch(() => {});

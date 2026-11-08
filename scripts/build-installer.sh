@@ -112,6 +112,7 @@ else
     R="$ELECTRON/dist/linux-unpacked/resources"
     cp "$RES_SRC/engine" "$RES_SRC/libdrm_client.so" "$R/"
     cp "$ELECTRON/icon.png" "$R/icon.png"
+    cp "$ELECTRON/icon.svg" "$R/icon.svg"
     cp "$REPO/assets/tray-icon.png" "$R/tray-icon.png"
     rm -rf "$R/vlc" && cp -r "$RES_SRC/vlc" "$R/vlc"
     rm -rf "$R/ffmpeg" && cp -a "$REPO/third_party/ffmpeg" "$R/ffmpeg"
@@ -134,7 +135,7 @@ echo "[6/7] Verifying package contents..."
 for f in engine libdrm_client.so \
          vlc/libvlc.so.5 vlc/libvlccore.so.9 vlc/plugins vlc/libvlc_pulse.so.0 \
          ffmpeg/bin/ffmpeg ffmpeg/lib/libavcodec.so.63 ffmpeg/lib/libavutil.so.61 ffmpeg/lib/libavformat.so.63 \
-         tray-icon.png icon.png app.asar \
+         tray-icon.png icon.png icon.svg app.asar \
          fetch-fairplay-libs.sh fairplay-libs.lock \
          android-stubs/libandroid.so android-stubs/libOpenSLES.so android-stubs/libdl.so \
          hybris-linker/q.so; do

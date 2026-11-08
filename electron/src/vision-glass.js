@@ -396,23 +396,23 @@ sheet.replaceSync(`
     position: relative !important;
   }
   /* extend hit area to fill the full visual circle via pseudo-element */
-  .kapple-nav-btn, .adam-nav-btn::before {
+  .kapple-nav-btn::before, .adam-nav-btn::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: 50%;
   }
-  .kapple-nav-btn, .adam-nav-btn:hover:not(:disabled) {
+  .kapple-nav-btn:hover:not(:disabled), .adam-nav-btn:hover:not(:disabled) {
     background: rgba(255,255,255,0.22) !important;
   }
-  .kapple-nav-btn, .adam-nav-btn:active:not(:disabled) {
+  .kapple-nav-btn:active:not(:disabled), .adam-nav-btn:active:not(:disabled) {
     transform: scale(0.88);
   }
-  .kapple-nav-btn, .adam-nav-btn:disabled {
+  .kapple-nav-btn:disabled, .adam-nav-btn:disabled {
     opacity: 0.25;
     cursor: default;
   }
-  .kapple-nav-btn, .adam-nav-btn svg {
+  .kapple-nav-btn svg, .adam-nav-btn svg {
     width: 14px;
     height: 14px;
     fill: none;
@@ -648,7 +648,7 @@ function _findInNavStack(stack, cursor, href) {
 
     function toggleSidebar(forceState) {
         const collapsed = forceState != null
-            ? !forceState
+            ? !!forceState
             : !document.body.classList.contains('kapple-sidebar-collapsed');
         document.body.classList.toggle('kapple-sidebar-collapsed', collapsed);
         const title = collapsed ? 'Show Sidebar (Ctrl+S)' : 'Hide Sidebar (Ctrl+S)';
@@ -664,7 +664,7 @@ function _findInNavStack(stack, cursor, href) {
 
     try {
         if (localStorage.getItem('kapple-sidebar-collapsed') === '1') {
-            toggleSidebar(false);
+            toggleSidebar(true);
         }
     } catch (_) {}
 
@@ -695,7 +695,7 @@ function _findInNavStack(stack, cursor, href) {
     wrap.appendChild(fwd);
 
     const attach = () => {
-        if (document.getElementById('adam-nav-buttons')) return;
+        if (document.getElementById('kapple-nav-buttons') || document.getElementById('adam-nav-buttons')) return;
         const nav = document.querySelector('nav.navigation');
         const header = _findNavHeader();
         if (!nav || !header) return;

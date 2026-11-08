@@ -39,7 +39,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ── Persistence ──────────────────────────────────────────────────────────────
 // %APPDATA% on Windows; ~/.config elsewhere. See platform.mjs.
 const CONFIG_DIR = migrateLegacyConfig(configRoot(), 'kapple-music');
-const PREF_FILE  = path.join(CONFIG_DIR, 'electron-prefs.json');
+const PREF_FILE = path.join(CONFIG_DIR, 'electron-prefs.json');
 
 // Chromium's profile lives in its own subfolder so it doesn't mix with our prefs/drm data. This must
 // run before the app is ready (and before the single-instance lock): set later, part of the profile
@@ -122,29 +122,29 @@ function _storeFlush() {
 
 // ── Chromium flags ──────────────────────────────────────────────────────────
 if (IS_LINUX) {
-// Opt-in (Settings → Display → Reduce animations): Chromium's reduced-motion preference makes the
-// web player show still artwork instead of animated backgrounds.
-if (loadPrefs().reduceMotion === true) app.commandLine.appendSwitch('force-prefers-reduced-motion');
-app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
-app.commandLine.appendSwitch('enable-features',
-    'UseOzonePlatform,WaylandWindowDecorations,' +
-    // Hardware H.264 decode for MV video. MV runs on the native <video src> path
-    // (and optionally WebCodecs), never MSE video — so the Chrome 138 VA-API→
-    // FFmpeg mid-stream fallback that surfaced as CHUNK_DEMUXER_ERROR on MSE
-    // cannot occur here (no ChunkDemuxer). MSE carries only AAC audio, which a
-    // video decoder never touches. Cuts RAM+CPU vs software decode.
-    'VaapiVideoDecoder,VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxGL');
-// Linux blocklists VA-API decode on many driver/compositor combos; without this
-// the enable-features above is silently ignored.
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
-// MediaSessionService: Chromium's built-in MPRIS implementation runs on the
-// same D-Bus session bus. When it tears down (e.g. on navigation), it disrupts
-// the dbus-next socket that mpris-service owns → EPIPE on every property write.
-// AudioServiceOutOfProcess: keep audio in-process so PulseAudio stream identity
-// matches the desktop name we set.
-app.commandLine.appendSwitch('disable-features',
-    'ExplicitSync,MediaSessionService,AudioServiceOutOfProcess');
-app.setDesktopName('kapple-music.desktop');
+    // Opt-in (Settings → Display → Reduce animations): Chromium's reduced-motion preference makes the
+    // web player show still artwork instead of animated backgrounds.
+    if (loadPrefs().reduceMotion === true) app.commandLine.appendSwitch('force-prefers-reduced-motion');
+    app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
+    app.commandLine.appendSwitch('enable-features',
+        'UseOzonePlatform,WaylandWindowDecorations,' +
+        // Hardware H.264 decode for MV video. MV runs on the native <video src> path
+        // (and optionally WebCodecs), never MSE video — so the Chrome 138 VA-API→
+        // FFmpeg mid-stream fallback that surfaced as CHUNK_DEMUXER_ERROR on MSE
+        // cannot occur here (no ChunkDemuxer). MSE carries only AAC audio, which a
+        // video decoder never touches. Cuts RAM+CPU vs software decode.
+        'VaapiVideoDecoder,VaapiVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxGL');
+    // Linux blocklists VA-API decode on many driver/compositor combos; without this
+    // the enable-features above is silently ignored.
+    app.commandLine.appendSwitch('ignore-gpu-blocklist');
+    // MediaSessionService: Chromium's built-in MPRIS implementation runs on the
+    // same D-Bus session bus. When it tears down (e.g. on navigation), it disrupts
+    // the dbus-next socket that mpris-service owns → EPIPE on every property write.
+    // AudioServiceOutOfProcess: keep audio in-process so PulseAudio stream identity
+    // matches the desktop name we set.
+    app.commandLine.appendSwitch('disable-features',
+        'ExplicitSync,MediaSessionService,AudioServiceOutOfProcess');
+    app.setDesktopName('kapple-music.desktop');
 }
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 // Music player: allow audio.play() without a live user gesture. Without this,
@@ -166,8 +166,8 @@ if (IS_LINUX) {
     catch { _hasSandbox = false; app.commandLine.appendSwitch('no-sandbox'); }
 }
 
-let win    = null;
-let tray   = null;
+let win = null;
+let tray = null;
 const linkSchemes = createLinkSchemeManager({ app, loadPrefs, savePrefs });
 const _startHidden = process.argv.includes('--hidden');
 let isQuitting = false;
@@ -178,7 +178,7 @@ let isQuitting = false;
 // turns them into either a play/open intent for the page or a music.apple.com page to load.
 const _UNSUPPORTED_LINK_TEXT = {
     podcast: ['Podcast subscriptions are not supported', 'Kapple Music is an Apple Music client and cannot subscribe to podcast feeds (itpc:// links).'],
-    daap:    ['Shared iTunes libraries are not supported', 'Kapple Music cannot connect to iTunes library shares (daap:// links).'],
+    daap: ['Shared iTunes libraries are not supported', 'Kapple Music cannot connect to iTunes library shares (daap:// links).'],
 };
 
 function _dispatchDeepLink(raw) {
@@ -239,22 +239,22 @@ app.on('second-instance', (_e, argv) => {
 //  1. KAPPLE_ENGINE_BIN environment variable (manual override / CI)
 //  2. <resources>/engine  (packaged Electron — app.isPackaged)
 //  3. dist/resources/engine  (dev: electron . from electron/ dir)
-const _resPkgBin  = path.join(process.resourcesPath, engineFileName());
-const _resDevBin  = path.join(__dirname, 'dist', 'resources', engineFileName());
-const ENGINE_BIN  = process.env.KAPPLE_ENGINE_BIN || process.env.ADAM_ENGINE_BIN ||
+const _resPkgBin = path.join(process.resourcesPath, engineFileName());
+const _resDevBin = path.join(__dirname, 'dist', 'resources', engineFileName());
+const ENGINE_BIN = process.env.KAPPLE_ENGINE_BIN || process.env.ADAM_ENGINE_BIN ||
     (app.isPackaged ? _resPkgBin : _resDevBin);
 
 // Bundled VLC libs shipped alongside the engine binary so a system VLC
 // upgrade/removal can't break audio playback.
-const _vlcPkgDir  = path.join(process.resourcesPath, 'vlc');
-const _vlcDevDir  = path.join(__dirname, 'dist', 'resources', 'vlc');
-const _vlcDir     = app.isPackaged ? _vlcPkgDir : (existsSync(_vlcDevDir) ? _vlcDevDir : _vlcPkgDir);
+const _vlcPkgDir = path.join(process.resourcesPath, 'vlc');
+const _vlcDevDir = path.join(__dirname, 'dist', 'resources', 'vlc');
+const _vlcDir = app.isPackaged ? _vlcPkgDir : (existsSync(_vlcDevDir) ? _vlcDevDir : _vlcPkgDir);
 
 // Prebuilt minimal FFmpeg (third_party/ffmpeg on Linux, third_party/ffmpeg-win on Windows): its binary does
 // the engine's music-video remux and export work (the engine finds "ffmpeg" on PATH), and on Linux its
 // libraries are the ones VLC's libavcodec plugin loads. Bundled so no package depends on the host's FFmpeg.
 const _ffDir = app.isPackaged ? path.join(process.resourcesPath, 'ffmpeg')
-                              : path.join(__dirname, '..', 'third_party', 'ffmpeg');
+    : path.join(__dirname, '..', 'third_party', 'ffmpeg');
 
 const ENGINE_DATA_DIR = path.join(CONFIG_DIR, 'engine-data');
 const EXPORT_PICKED_FILE = path.join(CONFIG_DIR, 'export-folders.txt');
@@ -276,7 +276,7 @@ function ensureUserDRM() {
 
     // Clean up stale artefacts from the old hybris-based DRM path.
     for (const stale of ['drm-rootless', 'drm-native', 'hybris-linker']) {
-        try { unlinkSync(path.join(userDir, stale)); } catch {}
+        try { unlinkSync(path.join(userDir, stale)); } catch { }
     }
 
     return path.join(userDir, 'files');
@@ -443,8 +443,8 @@ function ensureFairPlayLibs() {
 
 // ── Compositor / blur detection ───────────────────────────────────────────────
 const _isWayland = !!process.env.WAYLAND_DISPLAY;
-const _desktop   = (process.env.XDG_CURRENT_DESKTOP || '').toLowerCase();
-const _isKde      = ['kde', 'plasma'].some(d => _desktop.includes(d));
+const _desktop = (process.env.XDG_CURRENT_DESKTOP || '').toLowerCase();
+const _isKde = ['kde', 'plasma'].some(d => _desktop.includes(d));
 const _isHyprland = _desktop.includes('hyprland') || !!process.env.HYPRLAND_INSTANCE_SIGNATURE;
 console.log(`[Kapple Music] Compositor: desktop=${_desktop || '(unset)'} wayland=${_isWayland} kde=${_isKde} hyprland=${_isHyprland}`);
 // KDE X11 gets native compositor blur via _KDE_NET_WM_BLUR_BEHIND_REGION atom.
@@ -475,7 +475,7 @@ function _kdeWallpaperPath() {
             const m = line.match(/^Image\s*=\s*(.+)/);
             if (m) return m[1].trim().replace(/^file:\/\//, '');
         }
-    } catch (_) {}
+    } catch (_) { }
     return null;
 }
 
@@ -533,7 +533,8 @@ function _injectBlurLayer(bwin, dataUrl) {
             })(0);
         }
         bg.style.backgroundImage = 'url("' + safe + '")';
-    })()`).catch(() => {});}
+    })()`).catch(() => { });
+}
 
 function _applyKdeWallpaperBlur(bwin) {
     const wp = _kdeWallpaperPath();
@@ -590,7 +591,7 @@ function _hyprlandWallpaperPath() {
             const m = line.match(/^wallpaper\s*=\s*[^,]*,\s*(.+)/);
             if (m) return m[1].trim();
         }
-    } catch {}
+    } catch { }
     try {
         const cacheDir = path.join(os.homedir(), '.cache', 'swww');
         if (existsSync(cacheDir)) {
@@ -602,7 +603,7 @@ function _hyprlandWallpaperPath() {
                 }
             }
         }
-    } catch {}
+    } catch { }
     return null;
 }
 
@@ -621,7 +622,7 @@ function _withAlpha(color, alpha) {
         return `hsla(${parts[0]}, ${parts[1]}, ${parts[2]}, ${alpha})`;
     }
     if (/^#[0-9a-fA-F]{6}$/.test(color)) {
-        const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+        const r = parseInt(color.slice(1, 3), 16), g = parseInt(color.slice(3, 5), 16), b = parseInt(color.slice(5, 7), 16);
         return `rgba(${r},${g},${b},${alpha})`;
     }
     return color;
@@ -663,7 +664,7 @@ function _applyThemeVars(palette) {
             document.body.prepend(bd);
         }
         bd.style.background = ${bg};
-    })()`).catch(() => {});
+    })()`).catch(() => { });
 }
 
 function _clearThemeVars() {
@@ -675,7 +676,7 @@ function _clearThemeVars() {
             .forEach(v => r.style.removeProperty(v));
         document.getElementById('_kappleAccentBg')?.remove();
         document.getElementById('_kappleCustomBg')?.remove();
-    })()`).catch(() => {});
+    })()`).catch(() => { });
 }
 
 function _injectCustomFallbackBg() {
@@ -686,13 +687,13 @@ function _injectCustomFallbackBg() {
         d.id = '_kappleCustomBg';
         d.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;background:#1c1c1e;';
         document.body.prepend(d);
-    })()`).catch(() => {});
+    })()`).catch(() => { });
 }
 
 let _customCssKey = null;
 async function _injectCustomCss(filePath) {
     if (!win || !filePath || !existsSync(filePath)) return;
-    if (_customCssKey) { await win.webContents.removeInsertedCSS(_customCssKey).catch(() => {}); _customCssKey = null; }
+    if (_customCssKey) { await win.webContents.removeInsertedCSS(_customCssKey).catch(() => { }); _customCssKey = null; }
     try {
         const css = readFileSync(filePath, 'utf8');
         _customCssKey = await win.webContents.insertCSS(css);
@@ -700,7 +701,7 @@ async function _injectCustomCss(filePath) {
 }
 async function _clearCustomCss() {
     if (!_customCssKey || !win) return;
-    await win.webContents.removeInsertedCSS(_customCssKey).catch(() => {});
+    await win.webContents.removeInsertedCSS(_customCssKey).catch(() => { });
     _customCssKey = null;
 }
 
@@ -763,7 +764,7 @@ async function refreshBlurBg() {
             bg.id = '_kappleBlurBg';
             bg.style.cssText = 'position:fixed;inset:0;background:rgba(10,10,12,0.97);z-index:0;pointer-events:none';
             document.body.prepend(bg);
-        })()`).catch(() => {});
+        })()`).catch(() => { });
         return;
     }
     const shot = sources[0].thumbnail;
@@ -777,8 +778,8 @@ const DEBUG_LOGS_KEPT = 10;
 function pruneDebugLogs(logsDir) {
     try {
         const old = readdirSync(logsDir).filter(f => /^debug-.*\.log$/.test(f)).sort().reverse().slice(DEBUG_LOGS_KEPT);
-        for (const f of old) { try { unlinkSync(path.join(logsDir, f)); } catch {} }
-    } catch {}
+        for (const f of old) { try { unlinkSync(path.join(logsDir, f)); } catch { } }
+    } catch { }
 }
 
 // The page logs a lot (playback positions, MusicKit state). All of it goes to the debug log file;
@@ -798,9 +799,9 @@ function setupDebugLogging(win) {
     pruneDebugLogs(logsDir);
     const _write = (tag, args) => logStream.write(`[${new Date().toISOString()}] ${tag} ${args.join(' ')}\n`);
     const origLog = console.log, origError = console.error, origWarn = console.warn;
-    console.log   = (...a) => { origLog(...a);   _write('LOG  ', a); };
+    console.log = (...a) => { origLog(...a); _write('LOG  ', a); };
     console.error = (...a) => { origError(...a); _write('ERROR', a); };
-    console.warn  = (...a) => { origWarn(...a);  _write('WARN ', a); };
+    console.warn = (...a) => { origWarn(...a); _write('WARN ', a); };
     // A DevTools window is only opened on request (KAPPLE_DEVTOOLS); debug output alone must not
     // pop up a window every time the app is started from a terminal.
     if ((process.env.KAPPLE_DEVTOOLS || process.env.KAPPLE_DEVTOOLS)) win.webContents.openDevTools({ mode: 'detach' });
@@ -941,19 +942,19 @@ function createWindow() {
     // without repacking. Falls back to __dirname (inside ASAR) if not present.
     const _resBundle = (name) => {
         const outside = path.join(process.resourcesPath, name);
-        const inside  = path.join(__dirname, name);
+        const inside = path.join(__dirname, name);
         return existsSync(outside) ? outside : inside;
     };
-    const visionPath  = _resBundle('vision-bundle.js');
-    const visionCode  = existsSync(visionPath) ? readFileSync(visionPath, 'utf8') : '';
+    const visionPath = _resBundle('vision-bundle.js');
+    const visionCode = existsSync(visionPath) ? readFileSync(visionPath, 'utf8') : '';
     // engine-sse-bundle must load first — it creates window._kappleEngine which
     // smart-cache and engine-playback subscribe to in their own constructors.
-    const ssePath     = _resBundle('engine-sse-bundle.js');
-    const sseCode     = existsSync(ssePath)    ? readFileSync(ssePath,    'utf8') : '';
-    const cachePath   = _resBundle('smart-cache-bundle.js');
-    const cacheCode   = existsSync(cachePath)  ? readFileSync(cachePath,  'utf8') : '';
-    const enginePath  = _resBundle('engine-bundle.js');
-    const engineCode  = existsSync(enginePath) ? readFileSync(enginePath, 'utf8') : '';
+    const ssePath = _resBundle('engine-sse-bundle.js');
+    const sseCode = existsSync(ssePath) ? readFileSync(ssePath, 'utf8') : '';
+    const cachePath = _resBundle('smart-cache-bundle.js');
+    const cacheCode = existsSync(cachePath) ? readFileSync(cachePath, 'utf8') : '';
+    const enginePath = _resBundle('engine-bundle.js');
+    const engineCode = existsSync(enginePath) ? readFileSync(enginePath, 'utf8') : '';
 
     // ── Early CSS via insertCSS — fires before first paint, no preload risk ──
     // webContents.insertCSS() is Electron's dedicated API for injecting CSS
@@ -1334,8 +1335,8 @@ function createWindow() {
     // document to inject into without the race of dom-ready.
 
     win.webContents.on('did-start-loading', () => {
-        win.webContents.insertCSS(earlyCss).catch(() => {});
-        win.webContents.insertCSS(contextMenuCss).catch(() => {});
+        win.webContents.insertCSS(earlyCss).catch(() => { });
+        win.webContents.insertCSS(contextMenuCss).catch(() => { });
     });
 
     let bundleInjected = false;
@@ -1350,9 +1351,9 @@ function createWindow() {
         // 4 separate round-trips adding ~2-3s of sequential injection delay.
         const combined = [
             `window._kappleEngineURL='https://127.0.0.1:${ENGINE_PORT}';`,
-            sseCode    ? `try{${sseCode}}catch(e){console.error('[Kapple Music sse]',e.message)}`    : '',
+            sseCode ? `try{${sseCode}}catch(e){console.error('[Kapple Music sse]',e.message)}` : '',
             visionCode ? `try{${visionCode}}catch(e){console.error('[Kapple Music vision]',e.message)}` : '',
-            cacheCode  ? `try{${cacheCode}}catch(e){console.error('[Kapple Music cache]',e.name,e.message,e.stack)}`  : '',
+            cacheCode ? `try{${cacheCode}}catch(e){console.error('[Kapple Music cache]',e.name,e.message,e.stack)}` : '',
             engineCode ? `try{${engineCode}}catch(e){console.error('[Kapple Music engine]',e.name,e.message,e.stack)}` : '',
         ].filter(Boolean).join(';');
 
@@ -1371,7 +1372,7 @@ function createWindow() {
     });
     win.webContents.on('did-finish-load', () => {
         if (offlineShown && win.webContents.getURL().startsWith('file:')) {
-            win.webContents.insertCSS('html, body { background: #000 !important; }').catch(() => {});
+            win.webContents.insertCSS('html, body { background: #000 !important; }').catch(() => { });
         }
     });
 
@@ -1417,26 +1418,30 @@ function createWindow() {
 function configureAuthPopups(contents, allowed, inWindow = () => false) {
     contents.setWindowOpenHandler(({ url }) => {
         if (inWindow(url)) {
-            contents.loadURL(url).catch(() => {});
+            contents.loadURL(url).catch(() => { });
             return { action: 'deny' };
         }
         if (url === 'about:blank' || allowed(url)) {
-            return { action: 'allow', overrideBrowserWindowOptions: {
-                width: 520, height: 760, show: true, autoHideMenuBar: true,
-                backgroundColor: '#1c1c1e',
-                webPreferences: { preload: path.join(__dirname, 'auth-preload.cjs'), contextIsolation: true,
-                    nodeIntegration: false, sandbox: _hasSandbox },
-            } };
+            return {
+                action: 'allow', overrideBrowserWindowOptions: {
+                    width: 520, height: 760, show: true, autoHideMenuBar: true,
+                    backgroundColor: '#1c1c1e',
+                    webPreferences: {
+                        preload: path.join(__dirname, 'auth-preload.cjs'), contextIsolation: true,
+                        nodeIntegration: false, sandbox: _hasSandbox
+                    },
+                }
+            };
         }
         // Only open safe https:// URLs externally; drop file://, app://, etc.
-        if (_httpsHost(url)) shell.openExternal(url).catch(() => {});
+        if (_httpsHost(url)) shell.openExternal(url).catch(() => { });
         return { action: 'deny' };
     });
     contents.on('did-create-window', (child) => {
         const gate = (event, url) => {
             if (url === 'about:blank' || allowed(url)) return;
             event.preventDefault();
-            if (_httpsHost(url)) shell.openExternal(url).catch(() => {});
+            if (_httpsHost(url)) shell.openExternal(url).catch(() => { });
         };
         child.webContents.on('will-navigate', gate);
         child.webContents.on('will-redirect', gate);
@@ -1470,7 +1475,7 @@ function applyTweak(key, value) {
             if (!s) { s = document.createElement('style'); s.id = 'kapple-tweaks'; document.head.appendChild(s); }
             s.textContent = ${JSON.stringify(css)};
         })();
-    `).catch(() => {});
+    `).catch(() => { });
 }
 
 function buildTweakCSS(p) {
@@ -1494,16 +1499,16 @@ function applyGlassEffect(blur, opacity) {
     if (!win) return;
     // Clamp to numbers before JS interpolation — raw prefs strings must not reach executeJavaScript as
     // template-literal values (injection risk). 0 is a real value, so no `x || default`.
-    blur    = cleanBlur(blur);
+    blur = cleanBlur(blur);
     opacity = cleanGlassOpacity(opacity);
     const p = loadPrefs();
-    p.glassBlur    = blur;
+    p.glassBlur = blur;
     p.glassOpacity = opacity;
     savePrefs(p);
     win.webContents.executeJavaScript(`
         document.documentElement.style.setProperty('--kapple-glass-blur', '${blur}px');
         document.documentElement.style.setProperty('--kapple-glass-opacity', '${opacity}');
-    `).catch(() => {});
+    `).catch(() => { });
 }
 
 // Album-art theming colours the sidebar itself (with --kapple-nav-bg on <body>), so the Sidebar opacity slider
@@ -1512,7 +1517,7 @@ function _applyNavAlpha() {
     if (!win || win.isDestroyed()) return;
     const p = loadPrefs();
     const alpha = artNavAlpha(_resolveThemeMode(p), p);
-    win.webContents.executeJavaScript(`document.documentElement.style.setProperty('--kapple-nav-alpha','${alpha}')`).catch(() => {});
+    win.webContents.executeJavaScript(`document.documentElement.style.setProperty('--kapple-nav-alpha','${alpha}')`).catch(() => { });
 }
 
 // ── Theme mode ───────────────────────────────────────────────────────────────
@@ -1596,7 +1601,7 @@ function engineRequest(method, urlPath, body) {
             let data = '';
             res.setEncoding('utf8');
             res.on('data', c => { data += c; });
-            res.on('end', () => { let json = null; try { json = JSON.parse(data); } catch {} resolve({ status: res.statusCode, json }); });
+            res.on('end', () => { let json = null; try { json = JSON.parse(data); } catch { } resolve({ status: res.statusCode, json }); });
         });
         req.on('error', () => resolve(null));
         req.on('timeout', () => { req.destroy(); resolve(null); });
@@ -1623,7 +1628,7 @@ function applyPersistedViewSettings() {
     if (p.bgBlur != null)
         win?.webContents.executeJavaScript(
             `document.documentElement.style.setProperty('--kapple-bg-blur','${parseFloat(p.bgBlur) || 18}px')`
-        ).catch(() => {});
+        ).catch(() => { });
     applyTweak('__noop', null);
     applyThemeMode();
 }
@@ -1698,7 +1703,7 @@ ipcMain.handle('system:powerProfile', async () => {
 // Keys are restricted to a safe character set to prevent injection or path
 // traversal by XSS code running in the Apple Music webview.
 const _storeKeyRe = /^[a-zA-Z][a-zA-Z0-9_:.-]{0,127}$/;
-ipcMain.handle('store:read',  async (_, key) => {
+ipcMain.handle('store:read', async (_, key) => {
     if (typeof key !== 'string' || !_storeKeyRe.test(key)) return null;
     const store = await _storeLoad();
     return store[key] ?? null;
@@ -1740,13 +1745,13 @@ ipcMain.on('pref:set', (_, k, v) => {
     if (!(Number.isFinite(v) && v >= 0 && v <= 1e7)) return;
     const p = loadPrefs(); p[k] = v; savePrefs(p);
 });
-ipcMain.on('view:zoom',       (_, f) => setZoom(parseFloat(f)));
+ipcMain.on('view:zoom', (_, f) => setZoom(parseFloat(f)));
 ipcMain.on('view:glass-blur', (_, b) => { applyGlassEffect(b, loadPrefs().glassOpacity); });
-ipcMain.on('view:bg-blur',   (_, b) => {
+ipcMain.on('view:bg-blur', (_, b) => {
     const p = loadPrefs(); p.bgBlur = parseInt(b); savePrefs(p);
     win?.webContents.executeJavaScript(
         `document.documentElement.style.setProperty('--kapple-bg-blur','${parseInt(b)}px')`
-    ).catch(() => {});
+    ).catch(() => { });
     _refreshWallpaperBlur();
 });
 // view:tweak is the settings panel's generic pref writer, reachable from the
@@ -1762,7 +1767,7 @@ function _validTweak(k, v) {
     return v === null || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v)) ||
         (typeof v === 'string' && v.length <= 1024);
 }
-ipcMain.on('view:tweak',      (_, k, v) => { if (_validTweak(k, v)) applyTweak(k, v); });
+ipcMain.on('view:tweak', (_, k, v) => { if (_validTweak(k, v)) applyTweak(k, v); });
 // "Sidebar opacity" edits what the CURRENT theme's sidebar uses (see sidebar-glass.js): the accent colour's
 // opacity, or the blur veil. The theme comes from the same rule as everything else (_resolveThemeMode); this
 // handler used to treat a saved Blur as Accent off Hyprland, which re-applied the palette and so switched the
@@ -1785,17 +1790,17 @@ ipcMain.on('view:nav-opacity', (_, v) => {
 ipcMain.handle('theme:get-info', async () => {
     const p = loadPrefs();
     return {
-        desktop:        _desktop || 'unknown',
-        blurAvailable:  true,
-        themeMode:      resolveThemeMode({ signedIn: true, themeMode: p.themeMode, isHyprland: _isHyprland }),
-        themePalette:   p.themePalette || null,
+        desktop: _desktop || 'unknown',
+        blurAvailable: true,
+        themeMode: resolveThemeMode({ signedIn: true, themeMode: p.themeMode, isHyprland: _isHyprland }),
+        themePalette: p.themePalette || null,
         defaultPalette: defaultPalette(),
-        themePresets:   [
+        themePresets: [
             ...Object.entries(BUILTIN_PRESETS).map(([name, fn]) => ({ name, palette: fn(), builtin: true })),
             ...(p.themePresets || []),
         ],
-        customCssPath:  p.customCssPath || null,
-        acrylic:        null,
+        customCssPath: p.customCssPath || null,
+        acrylic: null,
     };
 });
 
@@ -1984,7 +1989,7 @@ function _destroyMprisPlayer() {
     const old = mprisPlayer;
     mprisPlayer = null;
     if (!old) return;
-    try { old._bus?.disconnect(); } catch (_) {}
+    try { old._bus?.disconnect(); } catch (_) { }
 }
 
 function _mprisReady() {
@@ -2017,13 +2022,13 @@ function createMprisPlayer() {
         player.getPosition = () => _lastMprisPosition;
 
         const sendCmd = (cmd) => win?.webContents.send('mpris:cmd', cmd);
-        player.on('play',      () => sendCmd('play'));
-        player.on('pause',     () => sendCmd('pause'));
+        player.on('play', () => sendCmd('play'));
+        player.on('pause', () => sendCmd('pause'));
         player.on('playpause', () => sendCmd('playpause'));
-        player.on('next',      () => sendCmd('next'));
-        player.on('previous',  () => sendCmd('previous'));
-        player.on('stop',      () => sendCmd('pause'));
-        player.on('shuffle',   (val) => sendCmd({ type: 'shuffle', value: Boolean(val) }));
+        player.on('next', () => sendCmd('next'));
+        player.on('previous', () => sendCmd('previous'));
+        player.on('stop', () => sendCmd('pause'));
+        player.on('shuffle', (val) => sendCmd({ type: 'shuffle', value: Boolean(val) }));
 
         // MPRIS2 § LoopStatus: client (e.g. KDE media widget) sets loop mode.
         player.on('loopStatus', (status) => sendCmd({ type: 'setLoopStatus', value: status }));
@@ -2032,7 +2037,7 @@ function createMprisPlayer() {
         player.on('volume', (val) => sendCmd({ type: 'setVolume', value: Math.round(Number(val) * 100) }));
 
         // MPRIS2 § Rate: we only support 1.0x; reject attempts to change it.
-        player.on('rate', () => { try { player.rate = 1.0; } catch (_) {} });
+        player.on('rate', () => { try { player.rate = 1.0; } catch (_) { } });
 
         // MPRIS2 § OpenUri: forward to the deep-link dispatcher (https:// only).
         player.on('open-uri', (uri) => {
@@ -2081,11 +2086,11 @@ function createMprisPlayer() {
     }
 }
 
-let _lastMprisStatus   = null;
+let _lastMprisStatus = null;
 let _lastMprisMetadata = null;
 let _lastMprisPosition = 0; // µs
-let _lastMprisShuffle  = false;
-let _lastMprisRepeat   = null; // 0=none, 1=all, 2=one
+let _lastMprisShuffle = false;
+let _lastMprisRepeat = null; // 0=none, 1=all, 2=one
 
 function applyMprisData(data) {
     // Snapshot player — the error event handler may null mprisPlayer
@@ -2112,16 +2117,16 @@ function applyMprisData(data) {
     // Position every 1s tick, causing applet jitter. getPosition() is already
     // overridden to return _lastMprisPosition on every D-Bus GetPosition call.
     if (data.shuffle != null) {
-        try { p.shuffle = data.shuffle; } catch (_) {}
+        try { p.shuffle = data.shuffle; } catch (_) { }
     }
     if (data.repeat != null) {
         // MusicKit repeatMode: 0=none, 1=one, 2=all → MPRIS LoopStatus.
         // (Was ['None','Playlist','Track'], which swapped one↔all.)
         const loopMap = ['None', 'Track', 'Playlist'];
-        try { p.loopStatus = loopMap[data.repeat] ?? 'None'; } catch (_) {}
+        try { p.loopStatus = loopMap[data.repeat] ?? 'None'; } catch (_) { }
     }
     // Propagate volume from renderer (0–100) to MPRIS (0.0–1.0).
-    if (data.volume != null) try { p.volume = Math.max(0, Math.min(1, data.volume / 100)); } catch (_) {}
+    if (data.volume != null) try { p.volume = Math.max(0, Math.min(1, data.volume / 100)); } catch (_) { }
 }
 
 function replayMprisState() {
@@ -2136,33 +2141,33 @@ function replayMprisState() {
             p.maximumRate = 1.0;
             p.rate = 1.0;
             // MPRIS2 § Control capabilities (static — we always allow control).
-            p.canControl  = true;
-            p.canGoNext   = true;
+            p.canControl = true;
+            p.canGoNext = true;
             p.canGoPrevious = true;
-            p.canPlay  = true;
+            p.canPlay = true;
             p.canPause = true;
-        } catch (_) {}
+        } catch (_) { }
         try {
-            if (_lastMprisStatus)        applyMprisData({ status: _lastMprisStatus });
-            if (_lastMprisMetadata)      applyMprisData({ metadata: _lastMprisMetadata });
-            if (_lastMprisPosition)      applyMprisData({ position: _lastMprisPosition });
+            if (_lastMprisStatus) applyMprisData({ status: _lastMprisStatus });
+            if (_lastMprisMetadata) applyMprisData({ metadata: _lastMprisMetadata });
+            if (_lastMprisPosition) applyMprisData({ position: _lastMprisPosition });
             applyMprisData({ shuffle: _lastMprisShuffle });
             if (_lastMprisRepeat != null) applyMprisData({ repeat: _lastMprisRepeat });
-        } catch (_) {}
+        } catch (_) { }
     }, 400);
 }
 
 ipcMain.on('mpris:update', (_, data) => {
     // Track each field independently so all survive across reconnects.
-    if (data.status)           _lastMprisStatus   = data.status;
+    if (data.status) _lastMprisStatus = data.status;
     if (_reloadEngineOnPause && data.status && data.status !== 'Playing') {
         _reloadEngineOnPause = false;
         engineLifecycle.reload();
     }
-    if (data.metadata)         _lastMprisMetadata = data.metadata;
+    if (data.metadata) _lastMprisMetadata = data.metadata;
     if (data.position != null) _lastMprisPosition = data.position;
-    if (data.shuffle != null)  _lastMprisShuffle  = data.shuffle;
-    if (data.repeat  != null)  _lastMprisRepeat   = data.repeat;
+    if (data.shuffle != null) _lastMprisShuffle = data.shuffle;
+    if (data.repeat != null) _lastMprisRepeat = data.repeat;
 
     // Mirror now-playing to the mini player if it's open.
     sendMiniState(data);
@@ -2181,7 +2186,7 @@ ipcMain.on('mpris:update', (_, data) => {
         // Emit the Seeked signal whenever the renderer requests it (after an
         // actual seek or on resume so clients re-anchor their position display).
         if (data.seeked && _lastMprisPosition) {
-            try { mprisPlayer.seeked(_lastMprisPosition); } catch (_) {}
+            try { mprisPlayer.seeked(_lastMprisPosition); } catch (_) { }
         }
     } catch (e) {
         console.warn('[Kapple Music] MPRIS update failed, will reconnect:', e.message);
@@ -2240,7 +2245,7 @@ function _discordConnect() {
     const tryNext = () => {
         if (idx >= paths.length) { _discordConnecting = false; return; }
         const sock = net.createConnection(paths[idx++]);
-        sock.once('error', () => { try { sock.destroy(); } catch (_) {} tryNext(); });
+        sock.once('error', () => { try { sock.destroy(); } catch (_) { } tryNext(); });
         sock.once('connect', () => {
             _discordSocket = sock;
             _discordConnecting = false;
@@ -2269,14 +2274,14 @@ function _discordOnData(chunk) {
                 _discordReady = true;
                 if (_discordPendingActivity) _discordSendActivity(_discordPendingActivity);
             }
-        } catch (_) {}
+        } catch (_) { }
     }
 }
 
 function _discordOnClose() {
     _discordReady = false;
     _discordConnecting = false;
-    if (_discordSocket) { try { _discordSocket.destroy(); } catch (_) {} _discordSocket = null; }
+    if (_discordSocket) { try { _discordSocket.destroy(); } catch (_) { } _discordSocket = null; }
     if (_discordEnabled && DISCORD_CLIENT_ID && !_discordReconnectTimer) {
         _discordReconnectTimer = setTimeout(() => { _discordReconnectTimer = null; _discordConnect(); }, 5000);
     }
@@ -2285,12 +2290,12 @@ function _discordOnClose() {
 function _discordSendActivity(activity) {
     if (!_discordSocket || !_discordReady) return;
     const nonce = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    try { _discordSocket.write(_discordEncode(1, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity }, nonce })); } catch (_) {}
+    try { _discordSocket.write(_discordEncode(1, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity }, nonce })); } catch (_) { }
 }
 
 function _discordClearActivity() {
     if (!_discordSocket || !_discordReady) return;
-    try { _discordSocket.write(_discordEncode(1, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity: null }, nonce: `${Date.now()}-clear` })); } catch (_) {}
+    try { _discordSocket.write(_discordEncode(1, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity: null }, nonce: `${Date.now()}-clear` })); } catch (_) { }
 }
 
 ipcMain.on('discord:update', (_, data) => {
@@ -2299,7 +2304,7 @@ ipcMain.on('discord:update', (_, data) => {
     const activity = {
         type: 2, // "Listening to …"
         details: (data.name || '').slice(0, 128) || undefined,
-        state:   (data.artist || '').slice(0, 128) || undefined,
+        state: (data.artist || '').slice(0, 128) || undefined,
     };
     // Artwork + play/pause badge.
     // small_image keys ("play" / "pause") must be uploaded as assets in the
@@ -2307,9 +2312,9 @@ ipcMain.on('discord:update', (_, data) => {
     if (data.artworkUrl) {
         activity.assets = {
             large_image: data.artworkUrl,
-            large_text:  (data.album || '').slice(0, 128) || undefined,
+            large_text: (data.album || '').slice(0, 128) || undefined,
             small_image: data.playing ? 'play' : 'pause',
-            small_text:  data.playing ? 'Playing' : 'Paused',
+            small_text: data.playing ? 'Playing' : 'Paused',
         };
     }
     if (data.playing && data.startedAtMs) {
@@ -2340,7 +2345,7 @@ ipcMain.on('discord:disable', () => {
     _discordPendingActivity = null;
     _discordClearActivity();
     if (_discordReconnectTimer) { clearTimeout(_discordReconnectTimer); _discordReconnectTimer = null; }
-    if (_discordSocket) { try { _discordSocket.destroy(); } catch (_) {} _discordSocket = null; }
+    if (_discordSocket) { try { _discordSocket.destroy(); } catch (_) { } _discordSocket = null; }
     _discordReady = false;
 });
 
@@ -2369,7 +2374,7 @@ async function _lastfmCall(params, httpMethod = 'GET') {
     const { key, secret } = await _lastfmCreds();
     const full = { ...params, api_key: key };
     full.api_sig = _lastfmSign(full, secret);
-    full.format  = 'json';
+    full.format = 'json';
     const body = new URLSearchParams(full).toString();
     const resp = httpMethod === 'POST'
         ? await fetch(LASTFM_ROOT, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body })
@@ -2395,7 +2400,7 @@ ipcMain.handle('drm:save-credentials', async (_, c) => {
     if (typeof c?.email !== 'string' || c.email.length > 256) return { ok: false };
     const remember = c.remember === true && typeof c.password === 'string' && c.password.length > 0 && c.password.length <= 256;
     const store = await _storeLoad();
-    store.drm_email    = c.email.trim();
+    store.drm_email = c.email.trim();
     store.drm_verified = true; // only called once Apple has accepted the sign-in
     if (remember) store.drm_password = c.password; else delete store.drm_password;
     _storeDirty = true; _storeFlush();
@@ -2442,8 +2447,10 @@ ipcMain.handle('lastfm:status', async () => {
     const store = await _storeLoad();
     const configured = !!(store.lastfm_api_key && store.lastfm_secret);
     // apiKey is public → returned for prefill; the secret is never returned.
-    return { configured, apiKey: store.lastfm_api_key || '', secretSet: !!store.lastfm_secret,
-             connected: !!store.lastfm_sk, username: store.lastfm_user || null };
+    return {
+        configured, apiKey: store.lastfm_api_key || '', secretSet: !!store.lastfm_secret,
+        connected: !!store.lastfm_sk, username: store.lastfm_user || null
+    };
 });
 
 // Open Last.fm's authorize page IN-APP so we control the theme and avoid the
@@ -2469,9 +2476,9 @@ function openLastfmAuthWindow(url) {
     _lastfmAuthWin.webContents.on('dom-ready', () => {
         // Prefer dark UA rendering (scrollbars, form controls, default canvas) and
         // hint the page toward dark — without overriding its own colors.
-        _lastfmAuthWin.webContents.insertCSS('html{color-scheme:dark light;background:#1c1c1e;}').catch(() => {});
+        _lastfmAuthWin.webContents.insertCSS('html{color-scheme:dark light;background:#1c1c1e;}').catch(() => { });
         _lastfmAuthWin.webContents.executeJavaScript(
-            "try{document.documentElement.style.colorScheme='dark';}catch(e){}").catch(() => {});
+            "try{document.documentElement.style.colorScheme='dark';}catch(e){}").catch(() => { });
     });
     _lastfmAuthWin.on('closed', () => { _lastfmAuthWin = null; });
     configureAuthPopups(_lastfmAuthWin.webContents, (u) => {
@@ -2523,10 +2530,10 @@ ipcMain.on('lastfm:nowplaying', async (_, t) => {
     const store = await _storeLoad();
     if (!store.lastfm_sk || !store.lastfm_api_key) return;
     const p = { method: 'track.updateNowPlaying', artist: t.artist, track: t.track, sk: store.lastfm_sk };
-    if (t.album)       p.album       = t.album;
+    if (t.album) p.album = t.album;
     if (t.albumArtist) p.albumArtist = t.albumArtist;
-    if (t.duration)    p.duration    = String(Math.round(t.duration));
-    try { await _lastfmCall(p, 'POST'); } catch (_) {}
+    if (t.duration) p.duration = String(Math.round(t.duration));
+    try { await _lastfmCall(p, 'POST'); } catch (_) { }
 });
 
 ipcMain.on('lastfm:scrobble', async (_, t) => {
@@ -2534,10 +2541,10 @@ ipcMain.on('lastfm:scrobble', async (_, t) => {
     const store = await _storeLoad();
     if (!store.lastfm_sk || !store.lastfm_api_key) return;
     const p = { method: 'track.scrobble', artist: t.artist, track: t.track, timestamp: String(t.timestamp), sk: store.lastfm_sk };
-    if (t.album)       p.album       = t.album;
+    if (t.album) p.album = t.album;
     if (t.albumArtist) p.albumArtist = t.albumArtist;
-    if (t.duration)    p.duration    = String(Math.round(t.duration));
-    try { await _lastfmCall(p, 'POST'); } catch (_) {}
+    if (t.duration) p.duration = String(Math.round(t.duration));
+    try { await _lastfmCall(p, 'POST'); } catch (_) { }
 });
 
 // ── ListenBrainz scrobbling ───────────────────────────────────────────────────
@@ -2563,7 +2570,7 @@ async function _lbSubmit(body) {
             headers: { 'Content-Type': 'application/json', Authorization: `Token ${token}` },
             body: JSON.stringify(body),
         });
-    } catch (_) {}
+    } catch (_) { }
 }
 
 ipcMain.handle('lb:set-token', async (_, token) => {
@@ -2649,7 +2656,7 @@ function createMiniPlayer() {
         // renderer to push a full now-playing snapshot to the mini.
         if (win && !win.isDestroyed()) win.hide();
         sendMiniState({ metadata: _lastMprisMetadata, status: _lastMprisStatus, position: _lastMprisPosition });
-        try { win?.webContents.send('miniplayer:sync'); } catch (_) {}
+        try { win?.webContents.send('miniplayer:sync'); } catch (_) { }
     });
     miniWin.on('closed', () => { miniWin = null; restoreMainFromMini(); });
 }
@@ -2665,7 +2672,7 @@ function toggleMiniPlayer() {
 
 function sendMiniState(data) {
     if (miniWin && !miniWin.isDestroyed()) {
-        try { miniWin.webContents.send('miniplayer:state', data); } catch (_) {}
+        try { miniWin.webContents.send('miniplayer:state', data); } catch (_) { }
     }
 }
 
@@ -2726,7 +2733,7 @@ function createTray() {
                     delete store['kapple_resume_state']; delete store['adam_resume_state'];
                     _storeDirty = true;
                     _storeFlushSync();
-                } catch (_) {}
+                } catch (_) { }
                 app.relaunch(); app.quit();
             },
         },
@@ -2799,7 +2806,7 @@ function serveLocalMediaRange(filePath, rangeHeader, method = 'GET') {
         ns.on('error', (err) => { errored = err; console.warn(`[kapple-video] ${tag} read error: ${err.message}`); });
         return new ReadableStream({
             async pull(controller) {
-                for (;;) {
+                for (; ;) {
                     if (errored) { controller.error(errored); return; }
                     const chunk = ns.read();
                     if (chunk) { controller.enqueue(new Uint8Array(chunk)); return; }
@@ -2978,7 +2985,7 @@ app.whenReady().then(() => {
             }
             // If currentMaxAge >= MIN_GOOD, leave Apple's headers untouched.
         } else if (/music\.apple\.com/i.test(url) &&
-                   /\.(js|mjs|css|woff2?|ttf|otf|eot|svg|png|jpg|jpeg|webp|avif|gif)(\?|$)/i.test(url)) {
+            /\.(js|mjs|css|woff2?|ttf|otf|eot|svg|png|jpg|jpeg|webp|avif|gif)(\?|$)/i.test(url)) {
             // Fingerprinted static assets — safe to cache for 24 h.
             // Only override if Apple is preventing caching (no-store / no-cache / max-age=0).
             const cc = (h['cache-control'] || h['Cache-Control'] || [''])[0];
@@ -3002,10 +3009,10 @@ app.whenReady().then(() => {
     // which arrive as kernel input events (KEY_PLAYPAUSE etc.) regardless of focus.
     const sendMediaCmd = (cmd) => win?.webContents.send('mpris:cmd', cmd);
     const _mkShortcuts = [
-        ['MediaPlayPause',    () => sendMediaCmd('playpause')],
-        ['MediaNextTrack',    () => sendMediaCmd('next')],
-        ['MediaPreviousTrack',() => sendMediaCmd('previous')],
-        ['MediaStop',         () => sendMediaCmd('pause')],
+        ['MediaPlayPause', () => sendMediaCmd('playpause')],
+        ['MediaNextTrack', () => sendMediaCmd('next')],
+        ['MediaPreviousTrack', () => sendMediaCmd('previous')],
+        ['MediaStop', () => sendMediaCmd('pause')],
     ];
     // Windows routes hardware media keys through the SMTC session (win-integration.mjs); a global
     // shortcut on top would deliver every key press twice and cancel itself out.
@@ -3046,7 +3053,7 @@ function _storeFlushSync() {
         const json = JSON.stringify(_storeCache);
         writeFileAtomicSync(STORE_FILE, enc ? safeStorage.encryptString(json) : json);
         _storeDirty = false;
-    } catch (_) {}
+    } catch (_) { }
 }
 
 // Stop engine and mark quitting before any window closes so the close handler
@@ -3058,14 +3065,14 @@ app.on('before-quit', (e) => {
     // Ask the renderer to flush its in-memory resume state to IPC immediately.
     // We then wait 300ms for the IPC round-trip + store update to land before
     // sync-writing to disk and really quitting.
-    try { win?.webContents?.send('app:flush-and-quit'); } catch (_) {}
+    try { win?.webContents?.send('app:flush-and-quit'); } catch (_) { }
     globalShortcut.unregisterAll();
     setTimeout(async () => {
         _storeFlushSync();
         // Bound the cookie flush: a stalled promise must not hold the quit open.
         const part = session.fromPartition('persist:apple-music');
         part.flushStorageData();
-        await Promise.race([part.cookies.flushStore().catch(() => {}), new Promise(r => setTimeout(r, 3000))]);
+        await Promise.race([part.cookies.flushStore().catch(() => { }), new Promise(r => setTimeout(r, 3000))]);
         await stopEngine();
         if (tray) { tray.destroy(); tray = null; }
         // Cleanup is complete: the web player's unload handlers must not be able to veto the quit
@@ -3078,7 +3085,7 @@ app.on('before-quit', (e) => {
 // On Linux Electron would quit automatically here, but we override it so the
 // hidden-window tray pattern works. The actual quit is already in progress
 // (triggered by app.quit() from the tray or SIGINT), so do nothing.
-app.on('window-all-closed', () => {});
+app.on('window-all-closed', () => { });
 
 // Ctrl+C in the launch terminal sends SIGINT. Without this handler Electron
 // ignores it (the window-close override keeps the process alive).

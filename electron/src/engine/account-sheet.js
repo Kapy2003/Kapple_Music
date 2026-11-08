@@ -97,11 +97,11 @@ function el(doc, tag, props = {}, ...children) {
  * snapshot; while the sheet is open it is polled, so an outcome whose event was missed (a dropped
  * event stream) still ends the "Signing In…" wait.
  */
-export function createAccountSheet({ signIn, submitCode, onDone = () => {}, onCancel = () => {}, fetchSnapshot = null, pollMs = 4000, savedEmail = async () => '', openUrl = () => {}, doc = globalThis.document }) {
+export function createAccountSheet({ signIn, submitCode, onDone = () => { }, onCancel = () => { }, fetchSnapshot = null, pollMs = 4000, savedEmail = async () => '', openUrl = () => { }, doc = globalThis.document }) {
     let dlg = null, view = null, busy = false, poll = null, remember = null;
     let challengeId = null, submittedId = null, dismissedId = null;
     let inputs = [], msg = null, primary = null;
-    let hidePassword = () => {};
+    let hidePassword = () => { };
 
     function ensureDialog() {
         if (dlg) return dlg;
@@ -182,13 +182,13 @@ export function createAccountSheet({ signIn, submitCode, onDone = () => {}, onCa
         primary = button('Sign In', { isPrimary: true, onClick: submitSignIn });
         render(
             [el(doc, 'h1', { id: 'kapple-account-title' }, knownEmail ? 'Sign-In Required' : 'Sign in with your Apple Account'),
-             el(doc, 'div', { class: 'sub' }, knownEmail
-                 ? `Enter the password for your Apple Account ${knownEmail}.`
-                 : 'Lossless and Hi-Res Lossless use Apple’s FairPlay, which needs its own sign-in.')],
+            el(doc, 'div', { class: 'sub' }, knownEmail
+                ? `Enter the password for your Apple Account ${knownEmail}.`
+                : 'Lossless and Hi-Res Lossless use Apple’s FairPlay, which needs its own sign-in.')],
             [el(doc, 'div', { class: 'group' }, email, el(doc, 'div', { class: 'pw' }, pass, eye)),
-             rememberRow,
-             el(doc, 'div', { class: 'note' }, 'Enter your Apple ID email (e.g. user@gmail.com or @icloud.com) or phone number with country code (+91...). Your password is sent only to Apple.'),
-             msg],
+                rememberRow,
+            el(doc, 'div', { class: 'note' }, 'Enter your Apple ID email (e.g. user@gmail.com or @icloud.com) or phone number with country code. Your password is sent only to Apple.'),
+                msg],
             [button('Cancel', { onClick: cancel }), primary],
         );
         for (const i of inputs) {
@@ -247,9 +247,9 @@ export function createAccountSheet({ signIn, submitCode, onDone = () => {}, onCa
         primary = button('Continue', { isPrimary: true, onClick: submitCodeNow });
         render(
             [el(doc, 'h1', { id: 'kapple-account-title' }, 'Enter Verification Code'),
-             el(doc, 'div', { class: 'sub' }, 'A verification code was sent to your other devices. Enter it to continue.')],
+            el(doc, 'div', { class: 'sub' }, 'A verification code was sent to your other devices. Enter it to continue.')],
             [fields, msg,
-             el(doc, 'div', { class: 'note' }, 'No code? Apple shows it on your other devices signed in to this Apple Account, and a code can also be read in Settings > your name > Sign-In & Security on an iPhone or iPad. Apple only sends a new code after a new sign-in.')],
+                el(doc, 'div', { class: 'note' }, 'No code? Apple shows it on your other devices signed in to this Apple Account, and a code can also be read in Settings > your name > Sign-In & Security on an iPhone or iPad. Apple only sends a new code after a new sign-in.')],
             [button('Cancel', { onClick: cancel }), primary],
         );
         primary.disabled = true;

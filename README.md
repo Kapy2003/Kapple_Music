@@ -220,7 +220,7 @@ This authenticates the FairPlay DRM layer. Without it, playback seamlessly uses 
 
 1. Click the **Settings** cog wheel next to your account profile in the top-right corner.
 2. In the **Apple Account** section, click **Enable Lossless…**.
-3. Sign in with your **Apple ID email address** (e.g. `user@gmail.com` or `user@icloud.com`) or your phone number with country code (e.g. `+919749651288`).
+3. Sign in with your **Apple ID email address** (e.g. `user@gmail.com` or `user@icloud.com`) or your phone number with country code (e.g. `+911234567890`).
    > [!TIP]
    > Phone numbers must include the international country code (e.g. `+91` for India). If you are unsure, use the primary email address linked to your Apple Account.
 4. Enter your password, check **Remember password on this computer**, and click **Sign In**.

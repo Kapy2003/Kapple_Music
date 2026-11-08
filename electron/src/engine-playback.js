@@ -394,6 +394,7 @@ let _vlcPaused     = false; // virtual paused state (overrides audio.paused in V
 // Mixer follow, transport controller, poll generation and EOF tolerance below are adapted from PR #1 (https://github.com/Kapy2003/Kapple_Music/pull/1).
 let _vlcSyncVolume = null; // current track UI follows external mixer changes
 const _VLC_VOL_KEY = 'kapple.vlcVolume';
+let _vlcUserMuted  = false; // module-level mute; survives transitions without leaking native HTMLMediaElement muted=true
 // Last audible VLC volume (1-200), kept across tracks and app restarts. Zero is
 // never stored, so a mute never carries into the next track.
 let _vlcVolPersist = (() => {
@@ -4006,6 +4007,7 @@ function _vlcHandleStateChange(state, prev, posMs, mkAudio) {
     if (state === 'playing') {
         _vlcPaused = false;
         _stopLyricsFreeze();
+        _sendMprisStatusRef?.('Playing');
         // Capture before clearing: wasLoading=true means VLC's initial startup sequence
         // went through a transient 'paused' state (opening→paused→playing). In that case
         // audio.play() never fired, so MK is still stuck in paused UI — dispatch 'playing'.
@@ -4788,6 +4790,7 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
 
     let _vlcVolume = _vlcVolPersist; // restore volume from previous track
     let _vlcMuted = false;
+    _vlcUserMuted = false;
     let _vlcPreMuteVol = _vlcVolume;
     let _vlcVolSetting = false;
     // Sound Check scales the posted volume by _scFactor (1.0 = off/no attenuation).
@@ -4802,7 +4805,10 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
     const _dispatchVolChange = () => {
         if (_vlcVolSetting) return;
         _vlcVolSetting = true;
-        try { mkAudio.dispatchEvent(new Event('volumechange')); }
+        try {
+            mkAudio.dispatchEvent(new Event('volumechange'));
+            _pushMiniStateRef?.();
+        }
         finally { _vlcVolSetting = false; }
     };
     _vlcSyncVolume = (volume, muted) => {
@@ -4815,6 +4821,7 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
         _vlcVolume = requested;
         _rememberVlcVolume(requested);
         _vlcMuted = !!muted;
+        _vlcUserMuted = _vlcMuted;
         _dispatchVolChange();
     };
     Object.defineProperty(mkAudio, 'volume', {
@@ -4825,7 +4832,8 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
             if (newVol === _vlcVolume) return;
             _vlcVolume = newVol;
             _rememberVlcVolume(newVol);
-            if (_vlcVolume > 0) _vlcMuted = false;
+            _vlcMuted = (newVol === 0);
+            _vlcUserMuted = _vlcMuted;
             _postVlcVol(_vlcMuted ? 0 : _vlcVolume);
             _dispatchVolChange();
         },
@@ -4835,6 +4843,7 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
         get: () => _vlcMuted,
         set: (v) => {
             _vlcMuted = !!v;
+            _vlcUserMuted = _vlcMuted;
             if (_vlcMuted) { _vlcPreMuteVol = _vlcVolume || 100; _postVlcVol(0); }
             else { _vlcVolume = _vlcPreMuteVol; _rememberVlcVolume(_vlcVolume); _postVlcVol(_vlcVolume); }
             _dispatchVolChange();
@@ -6072,6 +6081,7 @@ function _kappleToast(text) {
 let _lovedState     = {};   // assetId → boolean (our optimistic love state)
 let _reemitMpris    = null; // set by sendMprisMetadata; refreshes MPRIS rating
 let _pushMiniStateRef = null; // set in setup; pushes volume/repeat/shuffle/loved to the mini
+let _sendMprisStatusRef = null; // set in setup; pushes Playing/Paused/Stopped to MPRIS & miniplayer
 
 async function _toggleLove() {
     const mk = _mkInstance;
@@ -7127,7 +7137,9 @@ async function setup() {
         // shows the heart immediately (bidirectional with _toggleLove).
         const iid = _extractItemId(item);
         if (iid && iid in _lovedState) meta['xesam:userRating'] = _lovedState[iid] ? 1 : 0;
+        const isPlaying = mk.playbackState === window.MusicKit?.PlaybackStates?.playing || (_vlcMode && !_vlcPaused);
         window.kappleBridge.mprisUpdate({
+            status: isPlaying ? 'Playing' : 'Paused',
             metadata: meta,
             shuffle: mk.shuffleMode === 1,
         });
@@ -7143,6 +7155,7 @@ async function setup() {
         const seeked = isResume && status === 'Playing' && _vlcPosMs > 0;
         window.kappleBridge?.mprisUpdate?.({ status, position: _mprisPosMs() * 1000, seeked });
     }
+    _sendMprisStatusRef = sendMprisStatus;
 
     // Handle MPRIS commands from system media controls / media keys.
     // Commands are either plain strings (play/pause/next/previous) or objects
@@ -7152,13 +7165,12 @@ async function setup() {
     // to the mini window.
     function _pushMiniState() {
         const a = getMKAudio();
+        const isVlc = _vlcMode || _vlcLive || _engineCaps?.lossless;
         let v;
-        if (_kappleTransitioning || _kappleInGotoTransition) {
-            v = _vlcVolPersist || (a && Number.isFinite(a.volume) && a.volume > 0 ? Math.round(a.volume * 100) : 100);
-        } else if (_vlcMode || _vlcLive) {
-            v = a?.muted ? 0 : Math.round((Number.isFinite(a?.volume) && a.volume > 0 ? a.volume * 100 : _vlcVolPersist) || 100);
+        if (isVlc) {
+            v = _vlcUserMuted ? 0 : (_vlcVolPersist || (a && Number.isFinite(a.volume) && a.volume > 0 ? Math.round(a.volume * 100) : 100));
         } else {
-            v = a?.muted ? 0 : (a && Number.isFinite(a.volume) ? Math.round(a.volume * 100) : (_vlcVolPersist || 100));
+            v = a?.muted ? 0 : (a && Number.isFinite(a.volume) && a.volume > 0 ? Math.round(a.volume * 100) : (_vlcVolPersist || 100));
         }
         const curId = _currentAssetId || _extractItemId(mk?.nowPlayingItem);
         let loved = curId ? _lovedState[curId] : false;
@@ -7231,8 +7243,10 @@ async function setup() {
         switch (cmd) {
             case 'play':      mk.play().catch(() => {}); break;
             case 'pause':     mk.pause(); break;
-            case 'playpause': mk.playbackState === window.MusicKit?.PlaybackStates?.playing
-                ? mk.pause() : mk.play().catch(() => {}); break;
+            case 'playpause':
+                (mk.playbackState === window.MusicKit?.PlaybackStates?.playing || (_vlcMode && !_vlcPaused))
+                    ? mk.pause() : mk.play().catch(() => {});
+                break;
             case 'next':      _kappleNext(true).catch(() => {}); break;
             case 'previous':
                 // Android GoBackAsync: restart if past 3s, else go to previous item.
@@ -8349,12 +8363,7 @@ async function setup() {
         // Sync MPRIS status.
         const s = mk.playbackState;
         if (s === PS?.playing) {
-            // In VLC mode, skip 'Playing' until VLC has actually reported a valid
-            // position (_vlcPosMs > 0). This prevents MPRIS showing "Playing" during
-            // track pre-warming when VLC is still in "opening" state. The poll
-            // dispatches a 'playing' event (triggering this listener again) once VLC
-            // actually transitions to playing with posMs > 0.
-            if (!_vlcMode || _vlcPosMs > 0) sendMprisStatus('Playing', { isResume: _vlcPaused });
+            sendMprisStatus('Playing', { isResume: _vlcPaused });
         } else if (s === PS?.paused) {
             sendMprisStatus('Paused');
         } else if (s === PS?.stopped || s === PS?.none) {

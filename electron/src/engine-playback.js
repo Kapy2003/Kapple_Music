@@ -744,6 +744,7 @@ let _prevSb           = null;
 
 // ── Engine capability snapshot (from SSE) ─────────────────────────────────────
 
+let _engineOnline      = false; // true only when local engine API is reachable
 let _engineCaps       = { lossless: false, atmos: false };
 let _streamingQuality  = 'lossless'; // 'high-quality' | 'lossless' | 'hi-res-lossless'
 let _downloadsQuality  = 'lossless'; // same options, applied to export requests
@@ -813,7 +814,7 @@ function blockAppleCDN() {
     Object.defineProperty(HTMLMediaElement.prototype, 'src', {
         get: desc.get,
         set(val) {
-            if (isAppleCDN(val) && !_allowCDNTransition) { console.log('[Kapple Music Engine] Blocked CDN src:', val.slice(0, 80)); return; }
+            if (_engineOnline && isAppleCDN(val) && !_allowCDNTransition) { console.log('[Kapple Music Engine] Blocked CDN src:', val.slice(0, 80)); return; }
             if (isAppleCDN(val) && _allowCDNTransition) {
                 console.log('[Kapple Music Engine] CDN src THROUGH (gate open):', val.slice(0, 80));
                 if (_nativeMutedSet && (_vlcMode || _engineCaps.lossless)) _nativeMutedSet.call(this, true);
@@ -821,7 +822,7 @@ function blockAppleCDN() {
             if (_allowCDNTransition && val !== undefined) { console.log('[AUDIO-SRC] gate-open src set → "' + String(val).slice(0,60) + '"'); }
             // Block foreign blob URLs: always when _ourBlobUrl is set (original guard),
             // and also during an active goto transition before our stream is open.
-            if (val?.startsWith('blob:') && (_ourBlobUrl ? val !== _ourBlobUrl : _kappleInGotoTransition)) {
+            if (_engineOnline && val?.startsWith('blob:') && (_ourBlobUrl ? val !== _ourBlobUrl : _kappleInGotoTransition)) {
                 if (_kappleInGotoTransition && !_ourBlobUrl) console.log('[Kapple Music Engine] Blocked MK blob during goto:', val.slice(0, 60));
                 return;
             }
@@ -841,7 +842,7 @@ function blockAppleCDN() {
 
     const realSetAttr = HTMLMediaElement.prototype.setAttribute;
     HTMLMediaElement.prototype.setAttribute = function(name, val) {
-        if (name === 'src' && isAppleCDN(val) && !_allowCDNTransition) return;
+        if (_engineOnline && name === 'src' && isAppleCDN(val) && !_allowCDNTransition) return;
         return realSetAttr.call(this, name, val);
     };
 
@@ -877,6 +878,9 @@ function installPlayProxy(mkAudio) {
     });
 
     mkAudio.play = () => {
+        if (!_engineOnline) {
+            return _nativePlay();
+        }
         if (_vlcMode) {
             if (_vlcTransport.desired === true) return Promise.resolve();
             // Push a resolver BEFORE dispatching 'playing' so the event resolves it
@@ -4079,6 +4083,7 @@ function startVLCPoll(mkAudio) {
 // _losslessWaitDone). Once it times out once we skip all future waits — CBCS
 // state won't flip mid-session and we can't pay +2.5 s per track when unavailable.
 function waitForLossless(timeoutMs) {
+    if (!_engineOnline) return Promise.resolve();
     if (_streamingQuality === 'high-quality') return Promise.resolve(); // user forced AAC
     if (_engineCaps.lossless || _losslessWaitDone) return Promise.resolve();
     return new Promise(resolve => {
@@ -4128,6 +4133,7 @@ function _prewarmHandlePrecache(r) {
 // giving us ~200–600ms head start on the HLS fetch + DRM license acquisition.
 
 async function _hoverPrewarmById(adamId, isVideo = false) {
+    if (!_engineOnline) return;
     const mk = _mkInstance;
     if (!mk) return;
     if (_hoverSessions.has(adamId) || _hoverInflight.has(adamId)) return;
@@ -4208,6 +4214,7 @@ function _installHoverPrewarm() {
 }
 
 async function _prewarmNextAlac() {
+    if (!_engineOnline) return;
     const mk = _mkInstance;
     if (!mk) return;
     const items = mk.queue?.items;
@@ -4287,6 +4294,7 @@ async function _fetchAudioAnalysis(adamId, sf) {
 }
 
 async function _prewarmNextAac() {
+    if (!_engineOnline) return;
     const mk = _mkInstance;
     if (!mk) return;
     const items = mk.queue?.items;
@@ -4892,7 +4900,7 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
 // Only for AAC non-video tracks where adamId is extractable from the DOM.
 // handleTrackChange detects this and skips re-opening the session.
 async function _triggerDirectPlay(adamId, mk) {
-    if (!adamId) return;
+    if (!adamId || !_engineOnline) return;
     // Music videos are never handled here: the session below is opened with
     // capabilities.video=false, so the engine resolves a music-video adamId as a
     // song and returns 500 ("MV catalog lookup ... 404"). That 500 both leaves the
@@ -5099,6 +5107,16 @@ async function handleTrackChange(mk) {
     console.log(`[Kapple Music Engine] → ${item.attributes?.name ?? adamId} (id=${adamId} sf=${sf})`);
 
     const mkAudio = getMKAudio();
+    if (!_engineOnline) {
+        // Engine offline: allow native MusicKit web streaming via Apple CDN
+        if (mkAudio) {
+            delete mkAudio.load;
+            if (_nativeMutedSet) _nativeMutedSet.call(mkAudio, false);
+        }
+        _allowCDNTransition = true;
+        _broadcastNowPlaying();
+        return;
+    }
     if (mkAudio) {
         // Skip pause if audio already ended (natural track end): calling pause() on an ended
         // MediaSource element re-fires 'ended', causing a spurious double-advance through the queue.
@@ -5202,6 +5220,18 @@ async function handleTrackChange(mk) {
                 '\n  adamId=', _currentAssetId, 'gen=', myGen, 'currentGen=', _generation,
                 '\n  mk.state=', mk2?.playbackState, 'mk.item=', mk2?.nowPlayingItem?.id ?? 'null'
             );
+        }
+        if (err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError') || !_engineOnline) {
+            console.warn('[Kapple Music Engine] Engine unreachable — falling back to Apple web playback');
+            _engineOnline = false;
+            _allowCDNTransition = true;
+            if (mkAudio) {
+                delete mkAudio.load;
+                if (_nativeMutedSet) _nativeMutedSet.call(mkAudio, false);
+                _nativePlay().catch(() => {});
+            }
+            try { mk?.play?.(); } catch (_) {}
+            return;
         }
         if (mkAudio) delete mkAudio.load;
         setPlayState(PLAY_STATE.IDLE, 'htc:error');
@@ -6416,9 +6446,20 @@ async function setup() {
             _engineCaps = { lossless: !!(snap.capabilities.cbcs ?? snap.capabilities.alac ?? snap.capabilities.lossless), atmos: !!snap.capabilities.atmos };
             window._kappleLossless = _engineCaps.lossless && _streamingQuality !== 'high-quality';
         }
+        _engineOnline = true;
         console.log(`[Kapple Music Engine] Engine ready — drm.session=${snap?.drm?.session ?? 'unknown'} lossless=${_engineCaps.lossless} gen=${gen} reason=${why} snapshotId=${_snapshotEventId}`);
     } catch (e) {
-        console.warn('[Kapple Music Engine] Engine snapshot timeout:', e.message, '— continuing');
+        try {
+            const probe = await fetch(`${ENGINE}/api/v1/drm/status`, { signal: AbortSignal.timeout(1000) });
+            _engineOnline = probe.ok;
+        } catch (_) {
+            _engineOnline = false;
+        }
+        if (_engineOnline) {
+            console.log('[Kapple Music Engine] Engine online via status probe');
+        } else {
+            console.log('[Kapple Music Engine] Engine offline — native Apple web playback active');
+        }
     }
 
     // Push saved cache config to engine now that it's up; also load quality pref.
@@ -6500,7 +6541,10 @@ async function setup() {
         } catch (_) {}
     };
     _pushLibraryTokens();
-    window._adamEngine?.on('sse.open', _pushLibraryTokens);
+    window._adamEngine?.on('sse.open', () => {
+        _engineOnline = true;
+        _pushLibraryTokens();
+    });
     mk.addEventListener('authorizationStatusDidChange', _pushLibraryTokens);
 
     // _mkFetchAll paginates a MusicKit library endpoint until exhausted.
@@ -9652,27 +9696,29 @@ window.kappleGetQueueInfo = function () {
             return s;
         }
         function renderStatusRows(d) {
+            const isOnline = Boolean(d?.state?.process && d.state.process !== 'unknown');
             const st = d.state ?? {};
-            const proc = st.process ?? 'unknown';
+            const proc = st.process ?? (isOnline ? 'unknown' : 'offline (web fallback)');
             const procOk = proc === 'running';
             const procLoading = proc === 'starting';
-            const fp = st.fairplay ?? 'unknown';
+            const fp = st.fairplay ?? (isOnline ? 'unknown' : 'inactive (web playback)');
             const fpOk = fp === 'ready';
             const fpLoading = fp === 'unknown' && procLoading;
             const cbcs = d?.capabilities?.cbcs === true;
-            // Session is only "valid" (green) when backed by a real engine login —
-            // i.e. FairPlay is ready or CBCS capability is present. A web-session MUT
-            // alone sets session=valid in the engine for AAC, but that is not an
-            // explicit engine login: show "none" (red) until FairPlay is ready.
-            const sessOk = cbcs || fpOk;
-            const sessText = cbcs ? 'active (cbcs)' : fpOk ? 'valid' : 'none';
+            const mk = window.MusicKit?.getInstance?.();
+            const mkAuthed = Boolean(mk?.isAuthorized || mk?.authorizationStatus === 3 || mk?.musicUserToken);
+            const sessOk = cbcs || fpOk || mkAuthed;
+            const sessText = cbcs ? 'active (cbcs)' : fpOk ? 'valid' : mkAuthed ? 'active (Apple Web)' : 'none';
             const sessLoading = !sessOk && (procLoading || proc === 'running');
+            const backendName = isOnline
+                ? ((n => n ? n[0].toUpperCase() + n.slice(1) : 'Local Engine')(d.backend?.selected))
+                : 'Apple Music Web (Direct Playback)';
             return [
-                { label: 'DRM process', ok: procOk, loading: procLoading, text: proc },
-                { label: 'FairPlay',    ok: fpOk,   loading: fpLoading,   text: fp },
+                { label: 'DRM process', ok: isOnline ? procOk : true, loading: procLoading, text: proc },
+                { label: 'FairPlay',    ok: isOnline ? fpOk : false,   loading: fpLoading,   text: fp },
                 { label: 'Session',     ok: sessOk, loading: sessLoading, text: sessText,
-                  subtitle: 'Authentication lease with Apple servers' },
-                { label: 'Backend',     text: (n => n ? n[0].toUpperCase() + n.slice(1) : 'Unknown')(d.backend?.selected), noDot: true },
+                  subtitle: isOnline ? 'Authentication lease with Apple servers' : 'Web streaming lease with Apple servers' },
+                { label: 'Backend',     text: backendName, noDot: true },
             ];
         }
         function applyStatusRow(v, { ok, loading, text, noDot }) {

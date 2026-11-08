@@ -116,7 +116,7 @@ mkdir -p "$BIN_DIR" "$DESKTOP_DIR" "$ICON_DIR"
 
 # Extract payload (everything after __PAYLOAD_BELOW__)
 PAYLOAD_LINE=$(grep -a -n '^__PAYLOAD_BELOW__$' "$0" | cut -d: -f1)
-tail -n +"$((PAYLOAD_LINE + 1))" "$0" | zstd -d -q | tar -xf - -C "$INSTALL_DIR" --strip-components=1
+tail -n +"$((PAYLOAD_LINE + 1))" "$0" | zstd -d -q --long=31 | tar -xf - -C "$INSTALL_DIR" --strip-components=1
 
 # Ensure main binaries are executable
 chmod +x \

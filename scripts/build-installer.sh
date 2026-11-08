@@ -178,7 +178,7 @@ sed "s/__VERSION__/$VERSION/g" "$HEADER" > "$OUTFILE"
 
 # Append payload: tar | zstd solid, strip-components=1 so install dir is flat
 tar -cf - -C "$STAGE" linux-unpacked \
-    | zstd -19 --long=31 -T0 -q \
+    | zstd -19 --long=27 -T0 -q \
     >> "$OUTFILE"
 
 chmod +x "$OUTFILE"

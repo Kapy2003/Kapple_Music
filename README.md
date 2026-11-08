@@ -4,9 +4,9 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/Kapy2003/Kapple_Music?include_prereleases&style=for-the-badge)](https://github.com/Kapy2003/Kapple_Music/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows-blue?style=for-the-badge)](https://github.com/Kapy2003/Kapple_Music/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-linux-blue?style=for-the-badge)](https://github.com/Kapy2003/Kapple_Music/releases/latest)
 
-An Apple Music desktop client for Linux and Windows — lossless audio on Linux, music videos, downloads, and a native-feeling UI.
+An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), music videos, downloads, and a native-feeling visionOS glass UI.
 
 <div align="center">
   <img src="assets/screenshots/Blur-preview.png" alt="Blur theme" width="49%"/>
@@ -68,7 +68,7 @@ An Apple Music desktop client for Linux and Windows — lossless audio on Linux,
 
 - Native `blur-behind` on KDE X11 (KWin) and KDE Wayland — no screen-share dialog
 - Hyprland wallpaper blur via `hyprpaper` / `swww`
-- Native window blur on Windows 10/11 (the Windows Composition backdrop), and wallpaper blur on GNOME (read from the desktop settings), so Blur works on every desktop
+- Wallpaper blur on GNOME (read from desktop settings), with glass effect across Linux desktops
 - Software blur fallback on X11 and Sway
 - Automatically switches to software blur if the GPU crashes
 
@@ -86,7 +86,6 @@ An Apple Music desktop client for Linux and Windows — lossless audio on Linux,
 - **Mini player** — a small always-on-top now-playing window
 - **Discord Rich Presence**, **Last.fm** and **ListenBrainz** scrobbling
 - **Wayland + X11** — tested on Hyprland, KDE Plasma, GNOME, and Sway
-- **Windows** — media overlay, lock screen and hardware media keys (SMTC), taskbar buttons and jump list, launch at login, and Discord Rich Presence; see [Option D](#option-d--windows-installer-experimental)
 
 <details>
 <summary><b>Other</b></summary>
@@ -102,7 +101,6 @@ An Apple Music desktop client for Linux and Windows — lossless audio on Linux,
 
 ## Roadmap
 
-- **Windows lossless** — available in the nightly builds (Discord server, nightly channel); not yet in a release
 - **arm64 support** — packaging and wrapper binary for Apple Silicon / Raspberry Pi
 
 ## Requirements
@@ -196,13 +194,13 @@ Kapple Music opens Apple Music links from other apps and from the command line (
 - **Apple's own schemes** are the ones the Apple Music app registers (full list below). **Kapple Music claims none of them until you turn them on in Settings → Links**, one by one, because claiming a scheme takes it away from whatever handles it now. `daap://` (shared iTunes libraries) and `itpc://` (podcast subscriptions) cannot be played in a web client, so Kapple Music shows a notice for them.
 
 <details>
-<summary>The 24 schemes Settings → Links can claim</summary>
+<summary>Apple Music URI schemes Settings → Links can claim</summary>
 
-`music://` `musics://` `itms://` `itmss://` `itunes://` `itals://` `italss://` `itvls://` `itvlss://` `itsradio://` `itunesradio://` `daap://` `itpc://` and the Windows `itunes.assocprotocol.*` aliases.
+`music://` `musics://` `itms://` `itmss://` `itunes://` `itals://` `italss://` `itvls://` `itvlss://` `itsradio://` `itunesradio://` `daap://` `itpc://`
 
 </details>
 
-A plain `https://music.apple.com` link clicked in another app opens in your browser: operating systems do not let an app claim links for another company's website. To get from the browser into Kapple Music, turn on `music://` and click **Open in Music** on the website, or use a URL-redirect browser extension that rewrites `music.apple.com` to `kapple-music://music.apple.com`. On Windows you may also have to confirm the choice under Settings → Apps → Default apps.
+A plain `https://music.apple.com` link clicked in another app opens in your browser: operating systems do not let an app claim links for another company's website. To get from the browser into Kapple Music, turn on `music://` and click **Open in Music** on the website, or use a URL-redirect browser extension that rewrites `music.apple.com` to `kapple-music://music.apple.com`.
 
 ## Login
 
@@ -284,40 +282,6 @@ cd .. && scripts/build-installer.sh   # .run installer → dist/kapple-music.run
 scripts/build-flatpak.sh                # Flatpak bundle → dist/kapple-music.flatpak (after one of the above)
 ```
 
-### Windows
-
-**Prerequisites** (all on `PATH` unless noted):
-
-- [MSYS2](https://www.msys2.org) UCRT64 with `pacman -S mingw-w64-ucrt-x86_64-{gcc,make,openssl}`, and `C:\msys64\ucrt64\bin` on `PATH`
-- Go, Node.js (with npm) and git; run `git lfs pull` once so `third_party/ffmpeg-win` is present
-- A 64-bit VLC 3.x install (default `C:\Program Files\VideoLAN\VLC`); the script fetches the libvlc headers itself
-- Visual Studio 2022 Build Tools with the Windows 10/11 SDK, for the window-blur DLL (`electron\native\composition-backdrop.dll`, built automatically if missing)
-
-**Build the installer** from a PowerShell prompt in the repo root:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
-```
-
-The script builds `libdrm_client.dll` and `engine.exe` (CGO + the `kappleplay_backend` tag), copies the MSYS2 runtime DLLs and an audio-only VLC subset, then runs electron-builder. This is the stable line: it does not ship the Android runtime that Windows lossless needs, which lives on the [`nightly`](https://github.com/Kapy2003/Kapple_Music/tree/nightly) branch. The installer lands at `electron\dist\kapple-music-setup-<version>.exe`.
-
-| Option | Effect |
-|---|---|
-| `-SkipInstaller` | Stop after staging everything in `electron\dist\resources-win` |
-| `-VlcDir D:\vlc` | Use a VLC install in another location |
-| `-VlcInclude <dir>` | Use an existing directory containing `vlc\vlc.h` instead of fetching one |
-| `-Msys <dir>` | MSYS2 UCRT64 `bin` directory if not `C:\msys64\ucrt64\bin` |
-
-The renderer bundles (`engine-bundle.js` etc.) are built automatically by `build.sh` (or manually with `node electron/build-renderer.mjs` / `scripts/build-renderer.sh`).
-
-**Windows engine without ALAC/DRM (AAC + music videos only).** With cgo off the engine needs no C toolchain and no libvlc, and it cross-compiles from Linux:
-
-```bash
-cd engine && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -trimpath -o ../electron/dist/resources/engine.exe ./cmd
-```
-
-For development on Windows, run `npm install` then `npx electron .` in `electron\`; it uses `electron\dist\resources\engine.exe`. Windows lossless is built from the `nightly` branch.
-
 ### Cleaning
 
 Builds leave intermediates behind (objects, the electron-builder staging directory and the unpacked app).
@@ -353,7 +317,6 @@ Kapple_Music/
 │   │   ├── engine-sse.js        Server-sent-events client for engine state
 │   │   ├── smart-cache.js       Reports what you are looking at so the engine can pre-warm it
 │   │   └── vision-glass.js      Glass UI and CSS overrides
-│   ├── native/                Windows window-blur DLL source (Composition backdrop, built on Windows)
 │   ├── *-bundle.js            Generated by scripts/build-renderer.sh (do not edit)
 │   └── test/                  node --test suites for the renderer and main process
 ├── engine/                    Go HTTP engine (127.0.0.1:20025, TLS)
@@ -380,11 +343,10 @@ Kapple_Music/
 │   ├── fairplay-libs.lock     Pinned sources + SHA-256 of Apple's libraries (fetched, never shipped)
 │   └── files/                 Your Apple session (never packaged or committed)
 ├── flatpak/                   Flatpak manifest, desktop entry, metainfo and icon
-├── third_party/               Prebuilt minimal FFmpeg (LGPL, Git LFS): ffmpeg/ for Linux, ffmpeg-win/ for Windows
+├── third_party/               Prebuilt minimal FFmpeg (LGPL, Git LFS): ffmpeg/ for Linux
 ├── scripts/                   build-installer.sh, build-flatpak.sh, build-engine.sh,
 │                              build-renderer.sh, bundle-vlc.sh, build-ffmpeg.sh, clean.sh,
-│                              build-windows.ps1, build-ffmpeg-windows.sh, check-glibc.sh,
-│                              repack-appimage.sh, fetch-fairplay-libs.sh
+│                              check-glibc.sh, repack-appimage.sh, fetch-fairplay-libs.sh
 ├── verification/              API schema, QA console, benchmark and test harnesses
 ├── releases/                  Release notes (one file per version)
 ├── assets/                    Screenshots and tray icon

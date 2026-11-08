@@ -4008,6 +4008,7 @@ function _vlcHandleStateChange(state, prev, posMs, mkAudio) {
         _vlcPaused = false;
         _stopLyricsFreeze();
         _sendMprisStatusRef?.('Playing');
+        _scVlcReapply?.();
         // Capture before clearing: wasLoading=true means VLC's initial startup sequence
         // went through a transient 'paused' state (opening→paused→playing). In that case
         // audio.play() never fired, so MK is still stuck in paused UI — dispatch 'playing'.
@@ -4842,11 +4843,21 @@ async function _setupVLCPath(mkAudio, sess, adamId, ctrl, t0) {
     Object.defineProperty(mkAudio, 'muted', {
         get: () => _vlcMuted,
         set: (v) => {
-            _vlcMuted = !!v;
-            _vlcUserMuted = _vlcMuted;
-            if (_vlcMuted) { _vlcPreMuteVol = _vlcVolume || 100; _postVlcVol(0); }
-            else { _vlcVolume = _vlcPreMuteVol; _rememberVlcVolume(_vlcVolume); _postVlcVol(_vlcVolume); }
-            _dispatchVolChange();
+            const isUserAction = Boolean(window.event?.isTrusted);
+            if (!v) {
+                _vlcMuted = false;
+                _vlcUserMuted = false;
+                _vlcVolume = _vlcPreMuteVol || _vlcVolume || 100;
+                _rememberVlcVolume(_vlcVolume);
+                _postVlcVol(_vlcVolume);
+                _dispatchVolChange();
+            } else if (isUserAction) {
+                _vlcMuted = true;
+                _vlcUserMuted = true;
+                _vlcPreMuteVol = _vlcVolume || 100;
+                _postVlcVol(0);
+                _dispatchVolChange();
+            }
         },
         configurable: true,
     });
@@ -7165,13 +7176,7 @@ async function setup() {
     // to the mini window.
     function _pushMiniState() {
         const a = getMKAudio();
-        const isVlc = _vlcMode || _vlcLive || _engineCaps?.lossless;
-        let v;
-        if (isVlc) {
-            v = _vlcUserMuted ? 0 : (_vlcVolPersist || (a && Number.isFinite(a.volume) && a.volume > 0 ? Math.round(a.volume * 100) : 100));
-        } else {
-            v = a?.muted ? 0 : (a && Number.isFinite(a.volume) && a.volume > 0 ? Math.round(a.volume * 100) : (_vlcVolPersist || 100));
-        }
+        const v = _vlcUserMuted ? 0 : (_vlcVolPersist || (a && Number.isFinite(a.volume) && a.volume > 0 ? Math.round(a.volume * 100) : 100));
         const curId = _currentAssetId || _extractItemId(mk?.nowPlayingItem);
         let loved = curId ? _lovedState[curId] : false;
         if (loved === undefined && curId) {

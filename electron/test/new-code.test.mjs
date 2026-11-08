@@ -243,6 +243,11 @@ test('historyEnabled is off by default and sidebar nav button CSS is not collaps
     assert.doesNotMatch(VG, /\.kapple-nav-btn,\s*\.adam-nav-btn:disabled/);
     assert.match(VG, /\.kapple-nav-btn:disabled,\s*\.adam-nav-btn:disabled/);
 
+    // Sidebar collapse must not hide outer web-navigation or corrupt body grid
+    assert.doesNotMatch(VG, /body\.kapple-sidebar-collapsed\s+\[class\*="web-navigation"\]\s*\{[^}]*display:\s*none/);
+    assert.match(VG, /body\.kapple-sidebar-collapsed\s+nav\.navigation\s*\{[^}]*display:\s*none/);
+    assert.doesNotMatch(VG, /body\.kapple-sidebar-collapsed,\s*body\.kapple-sidebar-collapsed/);
+
     // 3. Application window icon wired
     assert.match(MAIN, /icon:\s*_appIconPath/);
 

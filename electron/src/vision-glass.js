@@ -219,8 +219,7 @@ sheet.replaceSync(`
   }
 
   /* ── Collapsible sidebar ── */
-  body.kapple-sidebar-collapsed nav.navigation,
-  body.kapple-sidebar-collapsed [class*="web-navigation"] {
+  body.kapple-sidebar-collapsed nav.navigation {
     display: none !important;
     width: 0 !important;
     min-width: 0 !important;
@@ -231,25 +230,21 @@ sheet.replaceSync(`
     opacity: 0 !important;
     pointer-events: none !important;
   }
-  body.kapple-sidebar-collapsed,
+  body.kapple-sidebar-collapsed {
+    --web-navigation-width: 0px !important;
+    --navigation-width: 0px !important;
+    --web-navigation-sidebar-width: 0px !important;
+  }
   body.kapple-sidebar-collapsed .web-chrome,
   body.kapple-sidebar-collapsed [class*="web-chrome"],
   body.kapple-sidebar-collapsed [class*="app-container"],
   body.kapple-sidebar-collapsed [class*="body-container"],
-  body.kapple-sidebar-collapsed [class*="content-container"],
-  body.kapple-sidebar-collapsed [class*="navigation-container"] {
-    --web-navigation-width: 0px !important;
-    --navigation-width: 0px !important;
-    --web-navigation-sidebar-width: 0px !important;
-    grid-template-columns: 1fr !important;
-    grid-template-areas: "main" "player" !important;
+  body.kapple-sidebar-collapsed [class*="content-container"] {
+    grid-template-columns: 0px 1fr !important;
   }
   body.kapple-sidebar-collapsed main,
-  body.kapple-sidebar-collapsed [role="main"],
-  body.kapple-sidebar-collapsed [class*="web-main"],
-  body.kapple-sidebar-collapsed [class*="main-container"] {
+  body.kapple-sidebar-collapsed [role="main"] {
     grid-column: 1 / -1 !important;
-    grid-area: main !important;
     width: 100% !important;
     max-width: 100% !important;
     margin-left: 0 !important;
@@ -258,13 +253,7 @@ sheet.replaceSync(`
     padding-left: 0 !important;
     left: 0 !important;
   }
-  body.kapple-sidebar-collapsed main > div,
-  body.kapple-sidebar-collapsed main > section,
-  body.kapple-sidebar-collapsed main [class*="page-container"],
-  body.kapple-sidebar-collapsed main [class*="content-container"],
-  body.kapple-sidebar-collapsed main [class*="content-wrapper"],
-  body.kapple-sidebar-collapsed main [class*="scrollable-content"],
-  body.kapple-sidebar-collapsed main [class*="body-content"] {
+  body.kapple-sidebar-collapsed main > div {
     margin-left: auto !important;
     margin-right: auto !important;
     margin-inline: auto !important;

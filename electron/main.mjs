@@ -156,7 +156,10 @@ app.commandLine.appendSwitch('enable-smooth-scrolling');
 // Chromium flag required for transparent windows on Linux.
 // Hyprland/KWin handle the compositor-level blur-behind on the desktop
 // side; Chromium just needs to render RGBA frames correctly.
-if (IS_LINUX) app.commandLine.appendSwitch('enable-zero-copy');
+if (IS_LINUX) {
+    app.commandLine.appendSwitch('enable-transparent-visuals');
+    app.commandLine.appendSwitch('enable-zero-copy');
+}
 // Sandbox detection: requires both unprivileged user namespaces AND a non-FUSE
 // root. AppImages use FUSE mounts that break the zygote sandbox startup even
 // when namespaces work, so we disable it whenever APPIMAGE is set.
@@ -298,8 +301,11 @@ function ensureEngineConfig() {
         }
         mkdirSync(drmBase, { recursive: true });
     } else {
-        // Dev: use the repo's own drm/files/ directly.
-        drmBase = path.join(__dirname, '..', 'drm', 'files');
+        // Dev: use user config DRM if session exists, else repo's drm/files.
+        const userDrm = ensureUserDRM();
+        drmBase = existsSync(path.join(userDrm, 'session-ready'))
+            ? userDrm
+            : path.join(__dirname, '..', 'drm', 'files');
     }
 
     if (!existsSync(cfgPath)) {
@@ -826,8 +832,8 @@ function createWindow() {
         // Fully transparent so the compositor (Hyprland/KWin) can render
         // the desktop behind the window with its own blur effect, giving
         // us the visionOS "glass over room" look for free.
-        backgroundColor: '#161618',
-        transparent: false,
+        backgroundColor: IS_LINUX ? '#00000000' : '#161618',
+        transparent: IS_LINUX,
         show: false,
         title: 'Kapple Music',
         webPreferences: {
@@ -962,7 +968,7 @@ function createWindow() {
     const { glassBlur = 20, glassOpacity = 0.07, bgBlur = 18 } = loadPrefs();
     const earlyCss = `
         :root { --kapple-glass-blur: ${glassBlur}px; --kapple-glass-opacity: ${glassOpacity}; --kapple-art-tint: rgba(255,255,255,0); --kapple-fallback-bg: none; --kapple-bg-blur: ${bgBlur}px; }
-        html, body { background: #161618 !important; overscroll-behavior: none !important; }
+        html, body { background: transparent !important; overscroll-behavior: none !important; }
         /* Strip grey tint from alternating content sections — let album art / wallpaper show through */
         .section--alternate, [class*="section--alternate"] { background: transparent !important; }
         /* "Also available in the iTunes Store" CTA — hidden everywhere. Matched by
@@ -973,8 +979,10 @@ function createWindow() {
         [data-testid="button-base-wrapper"]:has(> button[aria-label*="iTunes"]),
         [class*="native-cta-wrapper"]:has(button[aria-label*="iTunes"]) { display: none !important; }
         nav.navigation {
-            background: rgba(28, 28, 30, 0.95) !important;
-            border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+            background: rgba(255, 255, 255, var(--kapple-glass-opacity, 0.07)) !important;
+            backdrop-filter: blur(var(--kapple-glass-blur, 20px)) saturate(2.2) brightness(1.08) !important;
+            -webkit-backdrop-filter: blur(var(--kapple-glass-blur, 20px)) saturate(2.2) brightness(1.08) !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
         }
         /* Native desktop window dragging & UI feel */
         .web-chrome, header, [role="banner"], [class*="navigation__header"] {

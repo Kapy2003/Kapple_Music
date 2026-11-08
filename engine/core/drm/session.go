@@ -89,7 +89,18 @@ func (s *SessionManager) web() (mut, storefront string) {
 // no session: it is about to be removed and must not be used meanwhile.
 func (s *SessionManager) HasSession() bool {
 	if _, err := os.Stat(filepath.Join(s.baseDir, "session-ready")); err != nil {
-		return false
+		found := false
+		if uDir, err := os.UserConfigDir(); err == nil {
+			for _, app := range []string{"kapple-music", "adam"} {
+				if _, e := os.Stat(filepath.Join(uDir, app, "drm", "files", "session-ready")); e == nil {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return false
+		}
 	}
 	return !s.hasPending()
 }

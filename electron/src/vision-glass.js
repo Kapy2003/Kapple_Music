@@ -48,7 +48,7 @@ sheet.replaceSync(`
     --adam-art-tint: rgba(var(--adam-art-r), var(--adam-art-g), var(--adam-art-b), 0.4);
   }
 
-  html, body { background: #161618 !important; }
+  html, body { background: transparent !important; }
 
   /* ── Sidebar glass ──
      Confirmed stable selector. Svelte hash classes change on every deploy;
@@ -58,13 +58,13 @@ sheet.replaceSync(`
       in srgb,
       rgba(255, 255, 255, var(--kapple-glass-opacity, var(--adam-glass-opacity))) 80%,
       var(--adam-art-tint) 20%
-    )) !important;
+    ))) !important;
     backdrop-filter: blur(var(--kapple-glass-blur, var(--adam-glass-blur))) saturate(2.2) brightness(1.08) !important;
     -webkit-backdrop-filter: blur(var(--kapple-glass-blur, var(--adam-glass-blur))) saturate(2.2) brightness(1.08) !important;
-    border-right: 1px solid var(--kapple-nav-border, var(--kapple-nav-border, var(--adam-nav-border, rgba(255,255,255,0.12))) !important;
+    border-right: 1px solid var(--kapple-nav-border, var(--adam-nav-border, rgba(255,255,255,0.12))) !important;
     box-shadow: 1px 0 32px rgba(0,0,0,0.18) !important;
     transition: background 1.4s ease !important;
-    color: var(--kapple-nav-text, var(--kapple-nav-text, var(--adam-nav-text, inherit)) !important;
+    color: var(--kapple-nav-text, var(--adam-nav-text, inherit)) !important;
   }
 
   /* Strip backgrounds only from layout shells while hovered — :not(:hover)

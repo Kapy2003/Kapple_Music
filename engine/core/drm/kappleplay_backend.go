@@ -261,16 +261,12 @@ func (b *adamplayBackend) Start(ctx context.Context, cfg BackendConfig) error {
 	}
 
 	// Compute hybris paths once; used by both the sync and async init paths.
-	lib64Dir := filepath.Join(filepath.Dir(baseDir), "rootfs", "system", "lib64")
-	var hybrisLinkerDir string
-	if exePath, err := os.Executable(); err == nil {
-		hybrisLinkerDir = filepath.Join(filepath.Dir(exePath), "hybris-linker")
+	lib64Dir := resolveLib64Dir(baseDir)
+	var exePath string
+	if ep, err := os.Executable(); err == nil {
+		exePath = ep
 	}
-	if _, err := os.Stat(hybrisLinkerDir); err != nil && b.drmDir != "" {
-		if cand := filepath.Join(b.drmDir, "hybris-linker"); func() bool { _, e := os.Stat(cand); return e == nil }() {
-			hybrisLinkerDir = cand
-		}
-	}
+	hybrisLinkerDir := resolveHybrisLinkerDir(exePath, b.drmDir, baseDir)
 
 	b.running = true
 	b.gen++
@@ -347,8 +343,8 @@ func (b *adamplayBackend) runHybrisInit(baseDir, lib64Dir, hybrisLinkerDir strin
 	// session-ready marker. The Android lib creates 4096-byte SQLite stub files
 	// during RequestContext::init, so a post-init size check always passes.
 	if cfg.Credentials.Email == "" {
-		markerPath := filepath.Join(baseDir, "session-ready")
-		if _, err := os.Stat(markerPath); err != nil {
+		markerPath := findSessionReadyMarker(baseDir)
+		if markerPath == "" {
 			_ = os.Remove(filepath.Join(baseDir, "MUSIC_TOKEN"))
 			return errors.New("not signed in: no session-ready marker, sign in to enable lossless")
 		}
@@ -504,8 +500,8 @@ func (b *adamplayBackend) RetryFairPlay(mut string) {
 	// A web MUT alone is not enough for getPersistentKey — that uses the
 	// reqCtx Apple ID session from mpl_db. Without a real session the retry
 	// would set hybrisReady=true while ALAC still fails with SVError: Invalid CKC.
-	markerPath := filepath.Join(baseDir, "session-ready")
-	if _, err := os.Stat(markerPath); err != nil {
+	markerPath := findSessionReadyMarker(baseDir)
+	if markerPath == "" {
 		log.Printf("[drm] RetryFairPlay: session-ready marker absent — skipping (login required for ALAC)")
 		return
 	}
@@ -513,7 +509,7 @@ func (b *adamplayBackend) RetryFairPlay(mut string) {
 	if err := os.WriteFile(tokenFile, []byte(mut), 0o600); err == nil {
 		log.Printf("[drm] RetryFairPlay: wrote web MUT to MUSIC_TOKEN (%d bytes)", len(mut))
 	}
-	lib64Dir := filepath.Join(filepath.Dir(baseDir), "rootfs", "system", "lib64")
+	lib64Dir := resolveLib64Dir(baseDir)
 	cBase := C.CString(baseDir)
 	cLib64 := C.CString(lib64Dir)
 	cDevice := deviceInfoCString(baseDir)
@@ -852,6 +848,68 @@ func deviceInfoCString(baseDir string) *C.char {
 	}
 	return C.CString(info)
 }
+
+func resolveLib64Dir(baseDir string) string {
+	cand := filepath.Join(filepath.Dir(baseDir), "rootfs", "system", "lib64")
+	if _, err := os.Stat(cand); err == nil {
+		return cand
+	}
+	if uDir, err := os.UserConfigDir(); err == nil {
+		for _, app := range []string{"kapple-music", "adam"} {
+			c := filepath.Join(uDir, app, "drm", "rootfs", "system", "lib64")
+			if _, e := os.Stat(c); e == nil {
+				return c
+			}
+		}
+	}
+	return cand
+}
+
+func resolveHybrisLinkerDir(exePath string, drmDir string, baseDir string) string {
+	var cand string
+	if exePath != "" {
+		cand = filepath.Join(filepath.Dir(exePath), "hybris-linker")
+		if _, err := os.Stat(cand); err == nil {
+			return cand
+		}
+	}
+	if drmDir != "" {
+		cand = filepath.Join(drmDir, "hybris-linker")
+		if _, err := os.Stat(cand); err == nil {
+			return cand
+		}
+	}
+	cand = filepath.Join(filepath.Dir(baseDir), "hybris-linker")
+	if _, err := os.Stat(cand); err == nil {
+		return cand
+	}
+	if uDir, err := os.UserConfigDir(); err == nil {
+		for _, app := range []string{"kapple-music", "adam"} {
+			c := filepath.Join(uDir, app, "drm", "hybris-linker")
+			if _, e := os.Stat(c); e == nil {
+				return c
+			}
+		}
+	}
+	return cand
+}
+
+func findSessionReadyMarker(baseDir string) string {
+	cand := filepath.Join(baseDir, "session-ready")
+	if _, err := os.Stat(cand); err == nil {
+		return cand
+	}
+	if uDir, err := os.UserConfigDir(); err == nil {
+		for _, app := range []string{"kapple-music", "adam"} {
+			c := filepath.Join(uDir, app, "drm", "files", "session-ready")
+			if _, e := os.Stat(c); e == nil {
+				return c
+			}
+		}
+	}
+	return ""
+}
+
 
 type authSrcHolder struct{ src AuthSource }
 

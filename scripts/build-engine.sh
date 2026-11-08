@@ -34,5 +34,8 @@ cd "$REPO/engine"
 CGO_ENABLED=1 CGO_LDFLAGS="-L$LINKDIR -Wl,-rpath,\$ORIGIN" \
     go build -tags kappleplay_backend "$@" -o "$OUT/engine" ./cmd
 cp "$REPO/drm/libdrm_client.so" "$OUT/"
+if [ -d "$REPO/drm/hybris-linker" ]; then
+    cp -r "$REPO/drm/hybris-linker" "$OUT/"
+fi
 
 echo "engine + DRM libs → $OUT"

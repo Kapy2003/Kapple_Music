@@ -407,13 +407,25 @@ function stopEngine() { return engineLifecycle.stop(); }
 const FAIRPLAY_LIB64 = path.join(CONFIG_DIR, 'drm', 'rootfs', 'system', 'lib64');
 let _reloadEngineOnPause = false;
 function ensureFairPlayLibs() {
-    if (!app.isPackaged) return;
     if (!IS_LINUX) return;
     if (existsSync(path.join(FAIRPLAY_LIB64, 'libandroidappmusic.so'))) return;
-    const script = path.join(process.resourcesPath, 'fetch-fairplay-libs.sh');
+    const script = app.isPackaged
+        ? path.join(process.resourcesPath, 'fetch-fairplay-libs.sh')
+        : path.join(__dirname, '..', 'scripts', 'fetch-fairplay-libs.sh');
     if (!existsSync(script)) return;
+    const lockFile = app.isPackaged
+        ? path.join(process.resourcesPath, 'fairplay-libs.lock')
+        : path.join(__dirname, '..', 'drm', 'fairplay-libs.lock');
+    const stubsDir = app.isPackaged
+        ? path.join(process.resourcesPath, 'android-stubs')
+        : (existsSync(path.join(__dirname, '..', 'drm', 'stubs', 'out'))
+            ? path.join(__dirname, '..', 'drm', 'stubs', 'out')
+            : path.join(__dirname, '..', 'drm', 'android-stubs'));
     console.log('[Kapple Music] Downloading the FairPlay libraries for lossless playback...');
-    const proc = spawn('sh', [script, '--dest', FAIRPLAY_LIB64, '--quiet'], { stdio: ['ignore', 'ignore', 'pipe'] });
+    const args = [script, '--dest', FAIRPLAY_LIB64, '--quiet'];
+    if (existsSync(lockFile)) args.push('--lock', lockFile);
+    if (existsSync(stubsDir)) args.push('--stubs', stubsDir);
+    const proc = spawn('sh', args, { stdio: ['ignore', 'ignore', 'pipe'] });
     proc.stderr.on('data', d => console.error('[Kapple Music] fairplay:', String(d).trim()));
     proc.on('error', e => console.error('[Kapple Music] FairPlay download could not start:', e.message));
     proc.on('close', code => {

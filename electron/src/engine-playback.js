@@ -44,26 +44,38 @@ function _accountSheet() {
         savedEmail: () => window.kappleBridge?.drmSavedEmail?.() ?? '',
         openUrl: (url) => window.kappleBridge?.openExternal?.(url),
         signIn: async (email, password, remember) => {
-            const r = await fetch(`${ENGINE}/api/v1/drm/authenticate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
-            });
-            if (!r.ok) return { ok: false, error: (await r.text().catch(() => '')).trim() || `HTTP ${r.status}` };
-            _pendingCredentials = { email, password, remember: remember === true };
-            return { ok: true };
+            try {
+                const r = await fetch(`${ENGINE}/api/v1/drm/authenticate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                });
+                if (!r.ok) return { ok: false, error: (await r.text().catch(() => '')).trim() || `HTTP ${r.status}` };
+                _pendingCredentials = { email, password, remember: remember === true };
+                return { ok: true };
+            } catch (e) {
+                return { ok: false, error: 'Playback engine is offline or unreachable.' };
+            }
         },
         fetchSnapshot: async () => {
-            const r = await fetch(`${ENGINE}/api/v1/drm/status`);
-            return r.ok ? r.json() : null;
+            try {
+                const r = await fetch(`${ENGINE}/api/v1/drm/status`);
+                return r.ok ? r.json() : null;
+            } catch (_) {
+                return null;
+            }
         },
         submitCode: async (code) => {
-            const r = await fetch(`${ENGINE}/api/v1/drm/challenge`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reply: code }),
-            });
-            return r.ok;
+            try {
+                const r = await fetch(`${ENGINE}/api/v1/drm/challenge`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reply: code }),
+                });
+                return r.ok;
+            } catch (_) {
+                return false;
+            }
         },
         onDone: () => {
             // Saved via safeStorage only once Apple accepted them, so the engine can sign in
@@ -7224,7 +7236,8 @@ async function setup() {
             '[class*="play-button"]'               // any play-button class variant
             // NOTE: [aria-label*="Play"] removed — matches product-lockup nav links (false positive)
         );
-        if (!_vlcMode && _dbgPlaySel) {
+        const isLossless = window._kappleLossless || (_engineCaps.lossless && _streamingQuality !== 'high-quality');
+        if (!isLossless && !_vlcMode && _dbgPlaySel) {
             console.log('[Kapple Music AAC-GATE] click caught vlc=' + _vlcMode + ' sel=' + (_dbgPlaySel?.dataset?.testid || _dbgPlaySel?.className?.toString()?.slice(0,30) || '?'));
             // data-testid="click-action" is always an <A> tag that covers the entire card
             // (recently-searched rows, search result lockups, vertical-video artwork, etc.).
@@ -7673,7 +7686,7 @@ async function setup() {
             return; // handleTrackChange fires on NPIDF; no need for queue-change polling here
         }
 
-        if (_vlcMode && _dbgPlaySel) {
+        if ((_vlcMode || isLossless) && _dbgPlaySel) {
             // Guard: if the CDN gate is already open from a previous click, a second
             // click would overwrite _mkApiSaved with already-patched methods, permanently
             // corrupting mk.play/setQueue/changeToMediaAtIndex until page reload.
@@ -8977,8 +8990,12 @@ window.kappleGetQueueInfo = function () {
     }
 
     async function fetchDRM() {
-        const r = await fetch(`${ENGINE}/api/v1/drm/status`);
-        return r.json();
+        try {
+            const r = await fetch(`${ENGINE}/api/v1/drm/status`);
+            return r.ok ? r.json() : null;
+        } catch (_) {
+            return null;
+        }
     }
 
     // ── Apple Account section (self-contained, mutates its own body) ─────
@@ -8989,7 +9006,8 @@ window.kappleGetQueueInfo = function () {
         const drmState = drm?.state ?? drm ?? {};
         const fairplayOk = drmState?.fairplay === 'ready';
         const cbcsOk = drm?.capabilities?.cbcs === true;
-        const isSignedIn = isMkAuthorized || cbcsOk || fairplayOk;
+        const isLosslessReady = cbcsOk || fairplayOk;
+        const isSignedIn = isMkAuthorized || isLosslessReady;
 
         function renderState() {
             body.innerHTML = '';
@@ -9009,7 +9027,9 @@ window.kappleGetQueueInfo = function () {
             const sub = document.createElement('div');
             sub.style.cssText = FF + 'font-size:11px;color:rgba(255,255,255,0.38);margin-top:2px;';
             if (isSignedIn) {
-                sub.textContent = 'Full library access, recommendations, and streaming active.';
+                sub.textContent = isLosslessReady
+                    ? 'Full library access and lossless ALAC playback active.'
+                    : 'Library access active. One-time sign-in required for lossless ALAC.';
             } else {
                 sub.textContent = 'Sign in with your Apple Account to access your music library and recommendations.';
             }
@@ -9044,6 +9064,23 @@ window.kappleGetQueueInfo = function () {
                 };
             row.appendChild(btn);
             body.appendChild(row);
+
+            if (isSignedIn && !isLosslessReady) {
+                const losslessRow = document.createElement('div');
+                losslessRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 0 10px 18px;border-top:0.5px solid rgba(255,255,255,0.07);';
+                const llText = document.createElement('div');
+                llText.style.cssText = FF + 'flex:1;font-size:11px;color:rgba(255,255,255,0.5);';
+                llText.textContent = 'One-time Apple activation needed for Lossless (ALAC) on Linux.';
+                const llBtn = makeBtn('Enable Lossless…');
+                llBtn.style.fontSize = '12px';
+                llBtn.style.padding = '4px 10px';
+                llBtn.onclick = () => {
+                    _onAccountSignedIn = onRefresh;
+                    _accountSheet().openSignIn();
+                };
+                losslessRow.append(llText, llBtn);
+                body.appendChild(losslessRow);
+            }
 
             if (isSignedIn) {
                 const forgetRow = document.createElement('div');
@@ -9652,27 +9689,26 @@ window.kappleGetQueueInfo = function () {
             return s;
         }
         function renderStatusRows(d) {
-            const st = d.state ?? {};
-            const proc = st.process ?? 'unknown';
+            const st = d?.state ?? {};
+            const proc = st.process ?? (d ? 'unknown' : 'offline');
             const procOk = proc === 'running';
-            const procLoading = proc === 'starting';
-            const fp = st.fairplay ?? 'unknown';
+            const procLoading = proc === 'starting' || !d;
+            const fp = st.fairplay ?? (d ? 'unknown' : 'waiting');
             const fpOk = fp === 'ready';
             const fpLoading = fp === 'unknown' && procLoading;
             const cbcs = d?.capabilities?.cbcs === true;
-            // Session is only "valid" (green) when backed by a real engine login —
-            // i.e. FairPlay is ready or CBCS capability is present. A web-session MUT
-            // alone sets session=valid in the engine for AAC, but that is not an
-            // explicit engine login: show "none" (red) until FairPlay is ready.
             const sessOk = cbcs || fpOk;
-            const sessText = cbcs ? 'active (cbcs)' : fpOk ? 'valid' : 'none';
+            const sessText = cbcs ? 'active (cbcs)' : fpOk ? 'valid' : (d ? 'none' : 'waiting');
             const sessLoading = !sessOk && (procLoading || proc === 'running');
+            const backend = d?.backend?.selected
+                ? d.backend.selected[0].toUpperCase() + d.backend.selected.slice(1)
+                : (d ? 'Local Engine' : 'Offline / Starting…');
             return [
                 { label: 'DRM process', ok: procOk, loading: procLoading, text: proc },
                 { label: 'FairPlay',    ok: fpOk,   loading: fpLoading,   text: fp },
                 { label: 'Session',     ok: sessOk, loading: sessLoading, text: sessText,
                   subtitle: 'Authentication lease with Apple servers' },
-                { label: 'Backend',     text: (n => n ? n[0].toUpperCase() + n.slice(1) : 'Unknown')(d.backend?.selected), noDot: true },
+                { label: 'Backend',     text: backend, noDot: true },
             ];
         }
         function applyStatusRow(v, { ok, loading, text, noDot }) {

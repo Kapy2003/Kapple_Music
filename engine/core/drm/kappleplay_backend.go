@@ -266,6 +266,11 @@ func (b *adamplayBackend) Start(ctx context.Context, cfg BackendConfig) error {
 	if exePath, err := os.Executable(); err == nil {
 		hybrisLinkerDir = filepath.Join(filepath.Dir(exePath), "hybris-linker")
 	}
+	if _, err := os.Stat(hybrisLinkerDir); err != nil && b.drmDir != "" {
+		if cand := filepath.Join(b.drmDir, "hybris-linker"); func() bool { _, e := os.Stat(cand); return e == nil }() {
+			hybrisLinkerDir = cand
+		}
+	}
 
 	b.running = true
 	b.gen++

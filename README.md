@@ -166,7 +166,7 @@ open source. The `.run` installer fetches them at the end of the install; the ot
   is checked against the SHA-256 list in `drm/fairplay-libs.lock`; a file that does not match is refused.
 - They go to `~/.config/kapple-music/drm/rootfs/system/lib64`. To retry or repair, run the bundled
   script: `sh ~/.local/lib/kapple-music/resources/fetch-fairplay-libs.sh` (adjust the path for `--system`
-  installs or an extracted AppImage).
+  installs or an extracted AppImage), or in a source checkout: `sh scripts/fetch-fairplay-libs.sh`.
 
 </details>
 
@@ -216,19 +216,19 @@ Sign in on first launch the same way you would at music.apple.com. This covers A
   <img src="assets/screenshots/electron_login.png" alt="Apple Music web login" width="600"/>
 </div>
 
-### 2. Lossless account (lossless, hi-res)
+### 2. Lossless account activation (lossless, hi-res)
 
-This authenticates the FairPlay layer. Without it, playback falls back to AAC 256 kbps.
+This authenticates the FairPlay DRM layer. Without it, playback seamlessly uses AAC 256 kbps.
 
-1. Click the **Settings** cog wheel next to your account button
-2. Open **Account → Sign In…**, enter your Apple Account email and password, then the six-digit verification code Apple sends you
+1. Click the **Settings** cog wheel next to your account profile in the top-right corner.
+2. In the **Apple Account** section, click **Enable Lossless…**.
+3. Sign in with your **Apple ID email address** (e.g. `user@gmail.com` or `user@icloud.com`) or your phone number with country code (e.g. `+919749651288`).
+   > [!TIP]
+   > Phone numbers must include the international country code (e.g. `+91` for India). If you are unsure, use the primary email address linked to your Apple Account.
+4. Enter your password, check **Remember password on this computer**, and click **Sign In**.
+5. Enter the six-digit verification code (2FA) displayed on your Apple devices when prompted.
 
-<div align="center">
-  <img src="assets/screenshots/engine_login.png" alt="Kapple Music Settings — lossless account sign-in" width="49%"/>
-  <img src="assets/screenshots/Account_logged_in.png" alt="Account signed in" width="49%"/>
-</div>
-
-The **Engine Status** section in Settings shows whether the DRM layer is ready (DRM process, FairPlay, session, backend). On Linux, if it is not, playback falls back to AAC 256 kbps and music videos are unavailable.
+Under **Engine Status** in Settings, FairPlay will turn **ready** (green) and Session will turn **valid** (green).
 
 ## Dev
 
@@ -253,12 +253,13 @@ sudo pacman -S vlc nodejs npm
 sudo apt install vlc nodejs npm
 ```
 
-**Lossless in development** — fetch Apple's FairPlay libraries into the repo's rootfs once:
+**Lossless in development** — fetch Apple's FairPlay libraries and verify Android stubs:
 
 ```bash
 make -C drm android-stubs
-scripts/fetch-fairplay-libs.sh --dest drm/rootfs/system/lib64 --lock drm/fairplay-libs.lock --stubs drm/stubs/out
+sh scripts/fetch-fairplay-libs.sh
 ```
+`scripts/fetch-fairplay-libs.sh` automatically locates `drm/fairplay-libs.lock`, compiles missing Android stubs on-the-fly if needed, and installs to `~/.config/kapple-music/drm/rootfs/system/lib64`.
 
 **Rebuild the Go engine:**
 
@@ -307,7 +308,7 @@ The script builds `libdrm_client.dll` and `engine.exe` (CGO + the `kappleplay_ba
 | `-VlcInclude <dir>` | Use an existing directory containing `vlc\vlc.h` instead of fetching one |
 | `-Msys <dir>` | MSYS2 UCRT64 `bin` directory if not `C:\msys64\ucrt64\bin` |
 
-The renderer bundles (`engine-bundle.js` etc.) are committed; they are rebuilt on Linux with `scripts/build-renderer.sh`.
+The renderer bundles (`engine-bundle.js` etc.) are built automatically by `build.sh` (or manually with `node electron/build-renderer.mjs` / `scripts/build-renderer.sh`).
 
 **Windows engine without ALAC/DRM (AAC + music videos only).** With cgo off the engine needs no C toolchain and no libvlc, and it cross-compiles from Linux:
 

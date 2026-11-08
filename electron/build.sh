@@ -7,6 +7,9 @@ if [ ! -f node_modules/.bin/electron ]; then
     npm install --save-dev electron electron-builder 2>/dev/null || true
 fi
 
+# ── Build renderer bundles injected into Apple Music ─────────────────────────
+bash ../scripts/build-renderer.sh
+
 # ── Bundle VLC libs (audio-only subset; no-op when already bundled) ──────────
 bash ../scripts/bundle-vlc.sh
 

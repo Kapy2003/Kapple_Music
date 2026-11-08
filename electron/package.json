@@ -9,6 +9,7 @@
     "electron": "^43.0.0"
   },
   "scripts": {
+    "start": "bash ../scripts/build-renderer.sh && electron .",
     "dist": "npm run build:drm && npm run build:go && npm run build:engine && npm run build:vlc && electron-builder --linux AppImage",
     "postdist": "rm -f dist/builder-debug.yml dist/builder-effective-config.yaml",
     "clean": "bash ../scripts/clean.sh",

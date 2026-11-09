@@ -384,7 +384,7 @@ See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 ## Community
 
-Questions, bug reports, feature requests and polls live on the [Kapple Music Discord server](https://discord.gg/tY4v52KpVV).
+Questions, bug reports, feature requests and polls live on the [Kapple Music Discord server](https://discord.gg/Chilling_Room/Tvf8UmyMJF).
 
 ## References
 

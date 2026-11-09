@@ -42,7 +42,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 - **In-process DRM** — FairPlay runs inside the engine, with no helper process or local sockets
 - **Clean mode switching** — moving between lossless, AAC and music video stops the previous player first, so tracks never overlap
 - **Music Videos** — full MV playback with resolution selector (480p → 1080p), subtitles, fullscreen, and fast fragment-level seeking; H.264-preferred to avoid HEVC decode issues on Linux
-- **Audio quality badge** — shows codec, bit depth, and sample rate right in the player bar; click for full details
+- **Audio quality badge** — shows codec, bit depth, and sample rate right in the player bar; click for full stream details
 
 ### Downloads
 - Save individual tracks, full albums, or entire playlists to disk in one click
@@ -57,6 +57,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 - **Album art theming** — album and playlist pages take their colours from the artwork, and follow the playing track
 - Save and share your own theme presets (export/import JSON)
 - Adjustable blur strength and sidebar opacity sliders
+- Collapsible sidebar with centered main content and smooth transition
 - Light and dark mode support
 
 <div align="center">
@@ -64,7 +65,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 </div>
 
 <details>
-<summary><b>Compositor &amp; blur</b></summary>
+<summary><b>Compositor &amp; blur details</b></summary>
 
 - Native `blur-behind` on KDE X11 (KWin) and KDE Wayland — no screen-share dialog
 - Hyprland wallpaper blur via `hyprpaper` / `swww`
@@ -75,7 +76,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 </details>
 
 ### System Integration
-- **MPRIS2** — play/pause, next/prev, seek, and shuffle via D-Bus (works with KDE, GNOME shell, Waybar, etc.)
+- **MPRIS2** — play/pause, next/prev, seek, shuffle, and volume via D-Bus (works with KDE, GNOME shell, Waybar, etc.)
 
 <div align="center">
   <img src="assets/screenshots/MPRIS_integration.png" alt="MPRIS2 integration" width="600"/>
@@ -83,14 +84,14 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 
 - **Media keys** — hardware play/pause, next, and previous keys work even when the window is in the background (includes Bluetooth AVRCP)
 - **System tray** — minimize to tray; playback controls in the right-click menu
-- **Mini player** — a small always-on-top now-playing window
+- **Mini player** — compact always-on-top now-playing window with track progress, volume control, favorite toggle, and quality badge
 - **Discord Rich Presence**, **Last.fm** and **ListenBrainz** scrobbling
 - **Wayland + X11** — tested on Hyprland, KDE Plasma, GNOME, and Sway
 
 <details>
 <summary><b>Other</b></summary>
 
-- **Play History** — last 30 songs shown in the native Up Next panel; click any to replay; persists across restarts
+- **Play History** — last 30 songs in the native Up Next panel; click any to replay; persists across restarts
 - Back / Forward navigation buttons in the sidebar header
 - Smart segment cache — tracks pre-warmed before you press play
 - Separate cache for music video segments (2 GiB by default, adjustable)
@@ -105,10 +106,10 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 
 ## Requirements
 
-- Linux x86_64 with glibc ≥ 2.35 (Ubuntu 22.04+, Fedora 36+, Debian 12+), PulseAudio or PipeWire
-- Apple Music subscription
+- Linux x86_64 with glibc ≥ 2.35 (Ubuntu 22.04+, Fedora 36+, Debian 12+, Arch), PulseAudio or PipeWire
+- Active Apple Music subscription
 
-VLC and a minimal FFmpeg are bundled in every Linux package — no system VLC or FFmpeg needed.
+VLC (audio subset) and a minimal FFmpeg are bundled in every Linux package — no system VLC or FFmpeg needed.
 
 A Wayland compositor with blur support (Hyprland, KWin) gives the best glass UI. X11, GNOME, and Sway use a software blur fallback.
 
@@ -208,7 +209,7 @@ Two sign-ins are needed on Linux.
 
 ### 1. Apple Music web session
 
-Sign in on first launch the same way you would at music.apple.com. This covers AAC playback, the catalog and your library.
+Sign in on first launch the same way you would at music.apple.com. This covers AAC playback, the catalog, and your library.
 
 <div align="center">
   <img src="assets/screenshots/electron_login.png" alt="Apple Music web login" width="600"/>
@@ -218,7 +219,12 @@ Sign in on first launch the same way you would at music.apple.com. This covers A
 
 This authenticates the FairPlay DRM layer. Without it, playback seamlessly uses AAC 256 kbps.
 
-1. Click the **Settings** cog wheel next to your account profile in the top-right corner.
+<div align="center">
+  <img src="assets/screenshots/engine_login.png" alt="Apple Account sign-in sheet" width="49%"/>
+  <img src="assets/screenshots/Account_logged_in.png" alt="FairPlay active and valid" width="49%"/>
+</div>
+
+1. Click the **Settings** cog wheel in the top-right corner.
 2. In the **Apple Account** section, click **Enable Lossless…**.
 3. Sign in with your **Apple ID email address** (e.g. `user@gmail.com` or `user@icloud.com`) or your phone number with country code (e.g. `+911234567890`).
    > [!TIP]
@@ -226,7 +232,7 @@ This authenticates the FairPlay DRM layer. Without it, playback seamlessly uses 
 4. Enter your password, check **Remember password on this computer**, and click **Sign In**.
 5. Enter the six-digit verification code (2FA) displayed on your Apple devices when prompted.
 
-Under **Engine Status** in Settings, FairPlay will turn **ready** (green) and Session will turn **valid** (green).
+Under **Engine Status** in Settings, FairPlay will show **ready** (green) and Session will show **valid** (green).
 
 ## Dev
 
@@ -235,11 +241,17 @@ The bundled FFmpeg (`third_party/ffmpeg`) is stored with [Git LFS](https://git-l
 ```bash
 git lfs install
 git clone https://github.com/Kapy2003/Kapple_Music
-cd Kapple_Music/electron
-bash build.sh
+cd Kapple_Music
 ```
 
-`build.sh` installs npm dependencies, bundles system VLC libs into `dist/resources/vlc`, and launches the app.
+### Quick start (Makefile)
+
+```bash
+make fairplay    # Download & verify Apple FairPlay libraries (for ALAC lossless)
+make dev         # Install dependencies, build bundles & engine, and launch the app
+```
+
+### Manual development setup
 
 **Dependencies:**
 
@@ -248,55 +260,57 @@ bash build.sh
 sudo pacman -S vlc nodejs npm
 
 # Ubuntu/Debian
-sudo apt install vlc nodejs npm
+sudo apt install vlc nodejs npm build-essential
 ```
 
-**Lossless in development** — fetch Apple's FairPlay libraries and verify Android stubs:
+**Fetch Apple's FairPlay libraries:**
 
 ```bash
 make -C drm android-stubs
 sh scripts/fetch-fairplay-libs.sh
 ```
-`scripts/fetch-fairplay-libs.sh` automatically locates `drm/fairplay-libs.lock`, compiles missing Android stubs on-the-fly if needed, and installs to `~/.config/kapple-music/drm/rootfs/system/lib64`.
 
-**Rebuild the Go engine:**
+**Launch local development instance:**
 
 ```bash
-# CGO + the kappleplay_backend tag are required for DRM (lossless, hi-res, MVs);
-# without them the engine builds fine but silently falls back to AAC.
-# CGO's -L cannot take a path with spaces, hence the symlink.
-ln -sfT "$PWD/drm" /tmp/kapple-drm
-cd engine
-CGO_ENABLED=1 CGO_LDFLAGS='-L/tmp/kapple-drm -Wl,-rpath,$ORIGIN' \
-  go build -tags kappleplay_backend -o ../electron/dist/resources/engine ./cmd
-cp ../drm/libdrm_client.so ../electron/dist/resources/
+cd electron
+bash build.sh
+```
+
+`build.sh` automatically installs npm dependencies if missing, bundles renderer scripts via esbuild, builds the Go engine and C DRM client, bundles VLC libs into `dist/resources/vlc`, and launches Electron.
+
+**Rebuilding individual components:**
+
+```bash
+# Renderer bundles (engine-playback, smart-cache, engine-sse, vision-glass)
+node electron/build-renderer.mjs
+
+# Go playback engine
+bash scripts/build-engine.sh electron/dist/resources -ldflags="-w -s" -trimpath
+
+# Run test suites
+node --test electron/test/*.test.mjs
 ```
 
 ## Build
 
+### Quick build
+
 ```bash
-make -C drm                    # DRM library + Android stub libraries
-cd electron
-NODE_ENV=production npm run dist      # engine, VLC subset + AppImage → electron/dist/*.AppImage
-cd .. && scripts/build-installer.sh   # .run installer → dist/kapple-music.run
-scripts/build-flatpak.sh                # Flatpak bundle → dist/kapple-music.flatpak (after one of the above)
+make build                  # Builds DRM library, Go engine, and AppImage → electron/dist/*.AppImage
+scripts/build-installer.sh  # Self-extracting .run installer → dist/kapple-music.run
 ```
 
 ### Cleaning
 
-Builds leave intermediates behind (objects, the electron-builder staging directory and the unpacked app).
-
 ```bash
-scripts/clean.sh --dry-run         # see what would go
-scripts/clean.sh                   # intermediates: objects, probe/test binaries, staging
-scripts/clean.sh --dist            # + packaged output (dist/, AppImage, electron/dist/linux-unpacked)
-make -C drm release                # build the library, then drop what it was built from
-scripts/build-installer.sh --clean # build the installer, then drop electron/dist/linux-unpacked
+make clean                  # Remove compiler objects and intermediate staging files
+scripts/clean.sh --dist     # Also remove packaged output (dist/, AppImage, linux-unpacked)
+scripts/clean.sh --all      # Also remove built libdrm_client.so and electron/dist
+scripts/clean.sh --dry-run  # Preview files that would be removed without deleting
 ```
 
-`scripts/clean.sh --all` also removes the built library and `electron/dist/resources` — the engine
-`npx electron .` runs — so rebuild with `make -C drm` and `npm run build:go` afterwards. Your Apple session
-(`drm/files`) is never touched.
+Your Apple session credentials (`drm/files`) are never touched by clean scripts.
 
 ## Project structure
 
@@ -308,25 +322,29 @@ Kapple_Music/
 ├── electron/                  Desktop shell
 │   ├── main.mjs               Main process: window, IPC, MPRIS2, tray, themes, prefs,
 │   │                          Discord / Last.fm / ListenBrainz, engine lifecycle
-│   ├── preload.cjs            kappleBridge: the IPC surface exposed to music.apple.com
+│   ├── preload.cjs            kappleBridge: IPC surface exposed to music.apple.com
+│   ├── auth-preload.cjs       Preload script for Apple ID login modal sheet
 │   ├── miniplayer.html        Mini player window (with miniplayer-preload.cjs)
+│   ├── offline.html           Offline fallback page
+│   ├── build-renderer.mjs     Bundles renderer scripts with esbuild
+│   ├── build.sh               Dev startup script
 │   ├── src/                   Renderer code injected into the Apple Music web player
-│   │   ├── engine-playback.js   Playback, queue, settings panel, theming, MSE and MV pipelines
-│   │   ├── engine/              ES modules bundled into engine-playback.js
-│   │   │                        (handoff rules, catalog helpers, album palette, MP4 parser)
-│   │   ├── engine-sse.js        Server-sent-events client for engine state
-│   │   ├── smart-cache.js       Reports what you are looking at so the engine can pre-warm it
-│   │   └── vision-glass.js      Glass UI and CSS overrides
-│   ├── *-bundle.js            Generated by scripts/build-renderer.sh (do not edit)
-│   └── test/                  node --test suites for the renderer and main process
+│   │   ├── engine-playback.js Playback, queue, settings panel, theming, MSE and MV pipelines
+│   │   ├── engine/            ES modules bundled into engine-playback.js
+│   │   │                      (handoff rules, catalog helpers, album palette, MP4 parser)
+│   │   ├── engine-sse.js      Server-sent-events client for engine state
+│   │   ├── smart-cache.js     Reports what you are looking at so the engine can pre-warm it
+│   │   └── vision-glass.js    Glass UI and CSS overrides
+│   ├── *-bundle.js            Generated by build-renderer.mjs (do not edit)
+│   └── test/                  node --test suites for renderer and main process
 ├── engine/                    Go HTTP engine (127.0.0.1:20025, TLS)
 │   ├── cmd/                   Server, routes and handlers (playback, VLC, cache, export, library)
 │   ├── core/
 │   │   ├── apple/             Apple Music provider (catalog → HLS → sessions)
 │   │   ├── playback/          Session lifecycle and stream coordination
 │   │   ├── pipeline/          Source / stage types for the media pipeline
-│   │   ├── fairplay/          CBCS ALAC decryption and licence pool
-│   │   ├── drm/               DRM manager and the in-process native backend (cgo)
+│   │   ├── fairplay/          CBCS ALAC decryption and license pool
+│   │   ├── drm/               DRM manager and in-process native backend (cgo)
 │   │   ├── hls/               Playlist parsing
 │   │   ├── vlc/               In-process libvlc for lossless playback
 │   │   ├── diskcache/         Disk cache with LRU eviction
@@ -334,25 +352,26 @@ Kapple_Music/
 │   │   ├── export/            Track and music-video export
 │   │   ├── library/           Encrypted local library cache
 │   │   └── archtest/          Import-boundary tests
+│   ├── internal/              Internal engine helpers
 │   └── utils/                 aacstream, alacstream, ampapi, lyrics, mvlabel, config
 ├── drm/                       DRM library (libdrm_client.so)
 │   ├── drm_linux.c            Session lifecycle and account files
 │   ├── drm_hybris.c           Loads Apple's Android FairPlay libraries through libhybris
+│   ├── embedded_loader.c      In-memory ELF / SO loader for Android stubs
 │   ├── native/                Vendored wrapper: FairPlay login, lease, key contexts, decrypt
 │   ├── stubs/                 Stand-ins for Android libraries Apple's code links but never calls
 │   ├── fairplay-libs.lock     Pinned sources + SHA-256 of Apple's libraries (fetched, never shipped)
 │   └── files/                 Your Apple session (never packaged or committed)
-├── flatpak/                   Flatpak manifest, desktop entry, metainfo and icon
 ├── third_party/               Prebuilt minimal FFmpeg (LGPL, Git LFS): ffmpeg/ for Linux
-├── scripts/                   build-installer.sh, build-flatpak.sh, build-engine.sh,
-│                              build-renderer.sh, bundle-vlc.sh, build-ffmpeg.sh, clean.sh,
-│                              check-glibc.sh, repack-appimage.sh, fetch-fairplay-libs.sh
+├── scripts/                   build-installer.sh, build-engine.sh, build-renderer.sh,
+│                              bundle-vlc.sh, build-ffmpeg.sh, build-vlc-ffmpeg.sh, clean.sh,
+│                              check-glibc.sh, repack-appimage.sh, fetch-fairplay-libs.sh, lint.sh
 ├── verification/              API schema, QA console, benchmark and test harnesses
-├── releases/                  Release notes (one file per version)
 ├── assets/                    Screenshots and tray icon
 ├── kapple-music-custom.example.css     Template for the Custom CSS theme
 ├── CHANGELOG.md
-└── go.work                    Go workspace (engine module)
+├── Makefile                   Root Makefile: make fairplay, make dev, make build, make clean
+└── LICENSE
 ```
 
 </details>

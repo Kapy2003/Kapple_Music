@@ -64,7 +64,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
   <img src="assets/screenshots/Features.png" alt="Features" width="49%"/>
 </div>
 
-<details>
+<details open>
 <summary><b>Compositor &amp; blur details</b></summary>
 
 - Native `blur-behind` on KDE X11 (KWin) and KDE Wayland — no screen-share dialog
@@ -88,7 +88,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 - **Discord Rich Presence**, **Last.fm** and **ListenBrainz** scrobbling
 - **Wayland + X11** — tested on Hyprland, KDE Plasma, GNOME, and Sway
 
-<details>
+<details open>
 <summary><b>Other</b></summary>
 
 - **Play History** — last 30 songs in the native Up Next panel; click any to replay; persists across restarts
@@ -154,7 +154,7 @@ open source. The `.run` installer fetches them at the end of the install; the ot
 > [!NOTE]
 > Without them everything else works and playback uses AAC 256 kbps.
 
-<details>
+<details open>
 <summary>Where they come from and how to repair them</summary>
 
 - The `.run` installer downloads them at the end of a user install (~65 MB).
@@ -194,7 +194,7 @@ Kapple Music opens Apple Music links from other apps and from the command line (
 - **Apple Music URLs** (`https://music.apple.com/...` on any Apple Music host, including legacy `itunes.apple.com` links and `?i=` song links) play when they point at a song, album, playlist, artist or music video, and open in the app for any other page (browse, radio, search, curators, library, stations).
 - **Apple's own schemes** are the ones the Apple Music app registers (full list below). **Kapple Music claims none of them until you turn them on in Settings → Links**, one by one, because claiming a scheme takes it away from whatever handles it now. `daap://` (shared iTunes libraries) and `itpc://` (podcast subscriptions) cannot be played in a web client, so Kapple Music shows a notice for them.
 
-<details>
+<details open>
 <summary>Apple Music URI schemes Settings → Links can claim</summary>
 
 `music://` `musics://` `itms://` `itmss://` `itunes://` `itals://` `italss://` `itvls://` `itvlss://` `itsradio://` `itunesradio://` `daap://` `itpc://`
@@ -314,7 +314,7 @@ Your Apple session credentials (`drm/files`) are never touched by clean scripts.
 
 ## Project structure
 
-<details>
+<details open>
 <summary>Directory tree</summary>
 
 ```
@@ -388,7 +388,7 @@ Questions, bug reports, feature requests and polls live on the [Kapple Music Dis
 
 ## References
 
-<details>
+<details open>
 <summary>libraries and projects Kapple Music builds on</summary>
 
 **Runtime**

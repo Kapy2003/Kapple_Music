@@ -760,6 +760,7 @@ let _prevSb           = null;
 let _engineCaps       = { lossless: false, atmos: false };
 let _streamingQuality  = 'lossless'; // 'high-quality' | 'lossless' | 'hi-res-lossless'
 let _downloadsQuality  = 'lossless'; // same options, applied to export requests
+let _atmosEnabled     = true;        // preferred when _engineCaps.atmos is true
 let _losslessWaitDone = false;  // true after waitForLossless has timed out once — skip future waits
 let _snapshotEventId  = -1;     // SSE meta.id of the last engine.snapshot — drm events older than this are stale replays
 
@@ -4150,13 +4151,14 @@ async function _hoverPrewarmById(adamId, isVideo = false) {
     try {
         const sf = mk.storefrontId ?? 'us';
         const lossless = !isVideo && _engineCaps.lossless && _streamingQuality !== 'high-quality';
+        const atmos = !isVideo && _atmosEnabled && Boolean(_engineCaps.atmos);
         const sessResp = await fetch(`${ENGINE}/api/v1/playback`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 assetId:    adamId,
                 storefront: sf,
-                capabilities: { lossless, hiRes: lossless && _streamingQuality === 'hi-res-lossless', atmos: false, video: isVideo },
+                capabilities: { lossless, hiRes: lossless && _streamingQuality === 'hi-res-lossless', atmos, video: isVideo },
                 ...(isVideo ? { mvMaxHeight: _mvMaxHeight } : {}),
                 token:          mk.developerToken ?? '',
                 mediaUserToken: getMUT(),
@@ -4245,13 +4247,14 @@ async function _prewarmNextAlac() {
 
     try {
         const sf = mk.storefrontId ?? 'us';
+        const atmos = _atmosEnabled && Boolean(_engineCaps.atmos);
         const sessResp = await fetch(`${ENGINE}/api/v1/playback`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 assetId:    nextAdamId,
                 storefront: sf,
-                capabilities: { lossless: true, hiRes: _streamingQuality === 'hi-res-lossless', atmos: false, video: false },
+                capabilities: { lossless: true, hiRes: _streamingQuality === 'hi-res-lossless', atmos, video: false },
                 token:          mk.developerToken ?? '',
                 mediaUserToken: getMUT(),
             }),
@@ -4528,7 +4531,7 @@ async function _resolveSession(item, adamId, sf, mk) {
             capabilities: {
                 lossless: losslessWanted,
                 hiRes:    losslessWanted && _streamingQuality === 'hi-res-lossless',
-                atmos:    false,
+                atmos:    !isVideo && _atmosEnabled && Boolean(_engineCaps.atmos),
                 video:    isVideo,
             },
             mvMaxHeight:    _mvMaxHeight,
@@ -4980,7 +4983,7 @@ async function _triggerDirectPlay(adamId, mk) {
             body: JSON.stringify({
                 assetId:    adamId,
                 storefront: sf,
-                capabilities: { lossless: losslessWanted, hiRes: losslessWanted && _streamingQuality === 'hi-res-lossless', atmos: false, video: false },
+                capabilities: { lossless: losslessWanted, hiRes: losslessWanted && _streamingQuality === 'hi-res-lossless', atmos: _atmosEnabled && Boolean(_engineCaps.atmos), video: false },
                 mvMaxHeight: _mvMaxHeight,
                 token:          mk.developerToken ?? '',
                 mediaUserToken: getMUT(),
@@ -6485,6 +6488,7 @@ async function setup() {
         // lossless-enabled=false overrides streaming-quality → force AAC regardless.
         if (p['lossless-enabled'] === false) _streamingQuality = 'high-quality';
         if (p['downloads-quality']) _downloadsQuality  = p['downloads-quality'];
+        if (p['atmos-enabled'] !== undefined) _atmosEnabled = (p['atmos-enabled'] === true || p['atmos-enabled'] === 'true');
         window._kappleLossless = _engineCaps.lossless && _streamingQuality !== 'high-quality';
 
         const body = {};
@@ -10152,6 +10156,18 @@ window.kappleGetQueueInfo = function () {
             false));
         aqBody.appendChild(sqRow);
 
+        const atmosOn = _atmosEnabled && Boolean(_engineCaps.atmos);
+        const atmosToggle = _kappleIOSToggle(atmosOn, v => {
+            _atmosEnabled = v;
+            window.kappleBridge?.setTweak('atmos-enabled', v);
+        });
+        if (!losslessUsable || !_engineCaps.atmos) {
+            atmosToggle.style.opacity = '0.38';
+            atmosToggle.style.pointerEvents = 'none';
+        }
+        aqBody.appendChild(makeRow('Dolby Atmos', atmosToggle,
+            'Play Dolby Atmos spatial audio when available', false));
+
         return { wrap, onLosslessChange: fn => { _onLosslessChange = fn; } };
     }
 
@@ -11454,7 +11470,7 @@ ${EMBED_LI} .contextual-menu-item__option-text::before { content:'Download'; fon
             Language:         navigator.language || 'en-US',
             Capabilities: {
                 Lossless:        isLossless,
-                Atmos:           false,
+                Atmos:           _atmosEnabled && Boolean(_engineCaps.atmos),
                 Video:           info.type === 'video',
                 Playlist:        info.type === 'playlist',
                 LibraryPlaylist: !!(info.isLibrary),

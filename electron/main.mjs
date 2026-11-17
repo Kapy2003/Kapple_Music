@@ -1670,7 +1670,10 @@ const _MINI_CHANNELS = new Set(['miniplayer:toggle', 'miniplayer:expand', 'minip
 function _senderAllowed(event, channel) {
     const wc = event.sender;
     if (win && !win.isDestroyed() && wc === win.webContents) {
-        return _httpsHost(event.senderFrame?.url) === 'music.apple.com';
+        const u = event.senderFrame?.url;
+        if (_httpsHost(u) === 'music.apple.com') return true;
+        if (channel === 'downloads:list' && typeof u === 'string' && u.startsWith('file:') && u.includes('offline.html')) return true;
+        return false;
     }
     return _MINI_CHANNELS.has(channel) && miniWin && !miniWin.isDestroyed() && wc === miniWin.webContents;
 }
@@ -1765,6 +1768,39 @@ ipcMain.handle('dialog:choose-download-dir', async () => {
         } catch (e) { console.warn('[Kapple Music] could not record download folder:', e.message); }
     }
     return { canceled, filePaths };
+});
+ipcMain.handle('downloads:list', async () => {
+    let dir = path.join(os.homedir(), 'Music', 'Kapple-Music-Downloads');
+    try {
+        if (existsSync(EXPORT_PICKED_FILE)) {
+            const picked = readFileSync(EXPORT_PICKED_FILE, 'utf8').split('\n').filter(Boolean);
+            if (picked.length && existsSync(picked[picked.length - 1])) {
+                dir = picked[picked.length - 1];
+            }
+        }
+    } catch (_) {}
+    if (!existsSync(dir)) return [];
+    const results = [];
+    const mediaExts = new Set(['.m4a', '.mp4', '.flac', '.alac', '.aac', '.mp3']);
+    function scan(d, depth = 0) {
+        if (depth > 3 || results.length >= 200) return;
+        try {
+            const entries = readdirSync(d, { withFileTypes: true });
+            for (const e of entries) {
+                const full = path.join(d, e.name);
+                if (e.isDirectory()) {
+                    scan(full, depth + 1);
+                } else if (e.isFile()) {
+                    const ext = path.extname(e.name).toLowerCase();
+                    if (mediaExts.has(ext)) {
+                        results.push({ name: e.name, title: path.basename(e.name, ext), path: full });
+                    }
+                }
+            }
+        } catch (_) {}
+    }
+    scan(dir);
+    return results;
 });
 const _VALID_PREF_KEYS = new Set(['persistLimitMB', 'persistTTLDays', 'prewarmLimitMB']);
 ipcMain.on('pref:set', (_, k, v) => {

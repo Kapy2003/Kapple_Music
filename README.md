@@ -15,7 +15,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 https://github.com/user-attachments/assets/fd0ad5e3-c5da-4722-96c0-22102a8e0fd0
 
 <div align="center">
-  <img src="assets/screenshots/Blur-preview.png" alt="Blur theme" width="49%"/>
+  <!-- <img src="assets/screenshots/Blur-preview.png" alt="Blur theme" width="49%"/> -->
   <img src="assets/screenshots/Accented-preview.png" alt="Accent theme" width="49%"/>
 </div>
 

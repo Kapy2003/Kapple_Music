@@ -293,8 +293,8 @@ sheet.replaceSync(`
   :-webkit-full-screen #kapple-sidebar-floating-nav,
   html:fullscreen #kapple-sidebar-floating-nav,
   body:has(:fullscreen) #kapple-sidebar-floating-nav,
-  body:has(amp-playback-controls-exit) #kapple-sidebar-floating-nav,
-  body:has(amp-window-takeover) #kapple-sidebar-floating-nav,
+  body:has(amp-playback-controls-exit)[data-kapple-fullscreen="true"] #kapple-sidebar-floating-nav,
+  body:has(amp-window-takeover)[data-kapple-fullscreen="true"] #kapple-sidebar-floating-nav,
   body:has([data-testid="lyrics-fullscreen-modal"]) #kapple-sidebar-floating-nav,
   body.kapple-fullscreen #kapple-sidebar-floating-nav {
     display: none !important;
@@ -825,19 +825,27 @@ function _findInNavStack(stack, cursor, href) {
     else navWatcher.observe(document.documentElement, { childList: true, subtree: true });
 
     const checkFullscreenState = () => {
-        let isFS = !!(
-            document.fullscreenElement ||
-            document.querySelector(
-                'amp-playback-controls-exit, amp-window-takeover, ' +
-                '[data-testid="lyrics-fullscreen-modal"]'
-            )
-        );
+        let isFS = Boolean(document.fullscreenElement);
+
+        if (!isFS) {
+            const lyrics = document.querySelector('[data-testid="lyrics-fullscreen-modal"]');
+            if (lyrics && lyrics.offsetHeight > 0) isFS = true;
+        }
 
         if (!isFS) {
             const awk = document.querySelector('apple-music-video-player')?.shadowRoot;
-            if (awk?.querySelector('amp-playback-controls-exit, amp-window-takeover')) {
+            const container = awk?.querySelector('.container.takeover.show') || awk?.querySelector('.container.takeover');
+            if (container && container.offsetHeight > 0) {
                 isFS = true;
+            } else {
+                const exitBtn = awk?.querySelector('amp-playback-controls-exit');
+                if (exitBtn && exitBtn.offsetHeight > 0) isFS = true;
             }
+        }
+
+        if (!isFS) {
+            const lightExit = document.querySelector('amp-playback-controls-exit');
+            if (lightExit && lightExit.offsetHeight > 0) isFS = true;
         }
 
         if (!isFS && typeof document.elementsFromPoint === 'function') {
@@ -845,13 +853,22 @@ function _findInNavStack(stack, cursor, href) {
             for (const el of els) {
                 if (el.closest && (el.closest('#kapple-sidebar-floating-nav') || el.closest('#kapple-nav-buttons') || el.closest('nav.navigation'))) continue;
                 if (el.closest && el.closest('amp-playback-controls-exit')) {
-                    isFS = true;
-                    break;
+                    const exit = el.closest('amp-playback-controls-exit');
+                    if (exit && exit.offsetHeight > 0) {
+                        isFS = true;
+                        break;
+                    }
                 }
             }
         }
 
         document.body.classList.toggle('kapple-fullscreen', isFS);
+        if (isFS) {
+            document.body.setAttribute('data-kapple-fullscreen', 'true');
+        } else {
+            document.body.removeAttribute('data-kapple-fullscreen');
+        }
+
         if (floatingNav) {
             if (isFS) {
                 floatingNav.style.setProperty('display', 'none', 'important');

@@ -155,6 +155,11 @@ if (IS_APPLE_MUSIC) {
     onFlushAndQuit:   (cb)    => ipcRenderer.on('app:flush-and-quit', () => cb()),
     // Deep link navigation — fires when the user opens an Apple Music or kapple-music:// URL
     onOpenUrl:        (cb)    => ipcRenderer.on('kapple:open', (_, intent) => cb(intent)),
+    // OTA updater
+    appVersion:        require('./package.json').version,
+    updaterCheck:      (force) => ipcRenderer.invoke('updater:check', force),
+    updaterApply:      (url)   => ipcRenderer.invoke('updater:apply', url),
+    onUpdateAvailable: (cb)    => ipcRenderer.on('updater:available', (_, info) => cb(info)),
     };
     contextBridge.exposeInMainWorld('kappleBridge', bridge);
 }

@@ -6099,6 +6099,62 @@ function _kappleToast(text) {
     }, 1600);
 }
 
+function _showUpdateToast(text, actionLabel, onAction) {
+    let el = document.getElementById('kapple-update-toast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'kapple-update-toast';
+        el.style.cssText = 'position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(10px);' +
+            'z-index:99999;padding:8px 16px;border-radius:20px;background:rgba(30,30,32,0.95);' +
+            'border:0.5px solid rgba(255,255,255,0.18);color:#fff;font-size:13px;font-weight:500;' +
+            'font-family:-apple-system,SF Pro Text,system-ui,sans-serif;opacity:0;' +
+            'box-shadow:0 8px 30px rgba(0,0,0,0.6);backdrop-filter:blur(24px) saturate(1.8);' +
+            '-webkit-backdrop-filter:blur(24px) saturate(1.8);transition:opacity 0.25s,transform 0.25s;' +
+            'display:flex;align-items:center;gap:12px;';
+        document.body.appendChild(el);
+    }
+    el.innerHTML = '';
+    const span = document.createElement('span');
+    span.textContent = text;
+    el.appendChild(span);
+
+    if (actionLabel && onAction) {
+        const btn = document.createElement('button');
+        btn.textContent = actionLabel;
+        btn.style.cssText = 'background:#fa2d48;color:#fff;border:none;border-radius:12px;padding:4px 10px;' +
+            'font-size:12px;font-weight:600;cursor:pointer;';
+        btn.onclick = () => {
+            btn.disabled = true;
+            btn.textContent = 'Updating…';
+            onAction();
+        };
+        el.appendChild(btn);
+    }
+
+    const closeBtn = document.createElement('span');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = 'cursor:pointer;opacity:0.6;font-size:12px;margin-left:4px;';
+    closeBtn.onclick = () => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(-50%) translateY(10px)';
+    };
+    el.appendChild(closeBtn);
+
+    requestAnimationFrame(() => {
+        el.style.opacity = '1';
+        el.style.transform = 'translateX(-50%) translateY(0)';
+    });
+}
+
+window.kappleBridge?.onUpdateAvailable?.((info) => {
+    if (!info?.hasUpdate) return;
+    const isAppImage = info.isAppImage;
+    const actionText = isAppImage ? 'Update & Restart' : 'View Release';
+    _showUpdateToast(`Kapple Music v${info.latestVersion} is available`, actionText, () => {
+        window.kappleBridge?.updaterApply?.(info.assetUrl);
+    });
+});
+
 // ── Love / Favorite (bidirectional with MPRIS rating) ─────────────────────────
 let _lovedState     = {};   // assetId → boolean (our optimistic love state)
 let _reemitMpris    = null; // set by sendMprisMetadata; refreshes MPRIS rating
@@ -10934,6 +10990,53 @@ window.kappleGetQueueInfo = function () {
         return wrap;
     }
 
+    function _buildUpdatesSection() {
+        const { wrap, body } = makeSection('Updates');
+        const ver = window.kappleBridge?.appVersion || '1.1.1';
+        body.appendChild(makeRow('Version', `v${ver}`, 'Kapple Music desktop client', false));
+
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:10px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
+        const btn = makeBtn('Check for Updates');
+        const msg = document.createElement('span');
+        msg.style.cssText = FF + 'font-size:11px;color:rgba(255,255,255,0.4);flex:1;';
+
+        btn.onclick = async () => {
+            btn.disabled = true;
+            btn.textContent = 'Checking…';
+            msg.textContent = 'Checking GitHub releases…';
+            try {
+                const info = await window.kappleBridge?.updaterCheck?.(true);
+                if (info?.hasUpdate) {
+                    msg.textContent = `New release v${info.latestVersion} available!`;
+                    btn.textContent = info.isAppImage ? 'Update & Restart' : 'Download';
+                    btn.disabled = false;
+                    btn.onclick = () => {
+                        btn.disabled = true;
+                        btn.textContent = 'Updating…';
+                        window.kappleBridge?.updaterApply?.(info.assetUrl);
+                    };
+                } else if (info?.error) {
+                    msg.textContent = `Check failed: ${info.error}`;
+                    btn.textContent = 'Check for Updates';
+                    btn.disabled = false;
+                } else {
+                    msg.textContent = 'Kapple Music is up to date.';
+                    btn.textContent = 'Check for Updates';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                msg.textContent = `Error: ${err.message || String(err)}`;
+                btn.textContent = 'Check for Updates';
+                btn.disabled = false;
+            }
+        };
+
+        row.append(btn, msg);
+        body.appendChild(row);
+        return wrap;
+    }
+
     // ── Settings data pre-loader ───────────────────────────────────────────
     // Fetches DRM, tools and prefs in the background so they are ready before
     // the user clicks the cog.  openSettings() consumes the cached promise
@@ -11060,6 +11163,7 @@ window.kappleGetQueueInfo = function () {
         dlg.appendChild(scrobbleWrap);
         dlg.appendChild(historyWrap);
         dlg.appendChild(libraryWrap);
+        dlg.appendChild(_buildUpdatesSection());
     }
 
     // ── Settings cog + downloads button next to account row ───────────────

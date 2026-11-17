@@ -32,6 +32,7 @@ import { gnomeWallpaperPath } from './wallpaper.mjs';
 import https from 'https';
 import { autoAuthenticate } from './drm-autoauth.mjs';
 import { cleanBlur, cleanGlassOpacity, sidebarOpacityControl, artNavAlpha } from './src/engine/sidebar-glass.js';
+import { checkAppUpdate, applyAppImageUpdate } from './updater.mjs';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1401,6 +1402,18 @@ function createWindow() {
         if (offlineShown && win.webContents.getURL().startsWith('file:')) {
             win.webContents.insertCSS('html, body { background: #000 !important; }').catch(() => { });
         }
+        setTimeout(async () => {
+            try {
+                const info = await checkAppUpdate({
+                    currentVersion: app.getVersion(),
+                    netFetch: electronNet.fetch.bind(electronNet),
+                    force: false,
+                });
+                if (info?.hasUpdate && win && !win.isDestroyed()) {
+                    win.webContents.send('updater:available', info);
+                }
+            } catch (_) {}
+        }, 5000);
     });
 
     win.webContents.on('did-navigate', () => {
@@ -1801,6 +1814,39 @@ ipcMain.handle('downloads:list', async () => {
     }
     scan(dir);
     return results;
+});
+ipcMain.handle('updater:check', async (_, force) => {
+    return checkAppUpdate({
+        currentVersion: app.getVersion(),
+        netFetch: electronNet.fetch.bind(electronNet),
+        force: Boolean(force),
+    });
+});
+ipcMain.handle('updater:apply', async (_, assetUrl) => {
+    const update = await checkAppUpdate({
+        currentVersion: app.getVersion(),
+        netFetch: electronNet.fetch.bind(electronNet),
+    });
+    const targetUrl = assetUrl || update?.assetUrl;
+    if (process.env.APPIMAGE && targetUrl) {
+        try {
+            const res = await applyAppImageUpdate({
+                assetUrl: targetUrl,
+                netFetch: electronNet.fetch.bind(electronNet),
+            });
+            if (res.ok) {
+                console.log(`[Kapple Music Updater] AppImage updated in-place to ${res.path}, relaunching...`);
+                app.relaunch({ execPath: res.path });
+                app.exit(0);
+                return res;
+            }
+        } catch (err) {
+            console.error('[Kapple Music Updater] In-place update failed, falling back to release page:', err);
+        }
+    }
+    const url = update?.releaseUrl || targetUrl || 'https://github.com/Kapy2003/Kapple_Music/releases/latest';
+    shell.openExternal(url);
+    return { ok: true, external: true };
 });
 const _VALID_PREF_KEYS = new Set(['persistLimitMB', 'persistTTLDays', 'prewarmLimitMB']);
 ipcMain.on('pref:set', (_, k, v) => {

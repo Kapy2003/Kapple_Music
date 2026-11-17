@@ -295,7 +295,7 @@ sheet.replaceSync(`
   body:has(:fullscreen) #kapple-sidebar-floating-nav,
   body:has(amp-playback-controls-exit)[data-kapple-fullscreen="true"] #kapple-sidebar-floating-nav,
   body:has(amp-window-takeover)[data-kapple-fullscreen="true"] #kapple-sidebar-floating-nav,
-  body:has([data-testid="lyrics-fullscreen-modal"]) #kapple-sidebar-floating-nav,
+  body:has([data-testid="lyrics-fullscreen-modal"])[data-kapple-fullscreen="true"] #kapple-sidebar-floating-nav,
   body.kapple-fullscreen #kapple-sidebar-floating-nav {
     display: none !important;
   }
@@ -670,6 +670,7 @@ function _findInNavStack(stack, cursor, href) {
     // Floating navigation row for when the sidebar is collapsed
     const floatingNav = document.createElement('div');
     floatingNav.id = 'kapple-sidebar-floating-nav';
+    floatingNav.style.cssText = 'display:none;position:fixed;top:12px;left:14px;z-index:99999;gap:6px;align-items:center;padding:3px 6px;background:rgba(20,20,22,0.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.5);-webkit-app-region:no-drag !important;pointer-events:auto !important;';
 
     const floatingSidebarBtn = document.createElement('button');
     floatingSidebarBtn.className = 'kapple-nav-btn';
@@ -728,6 +729,14 @@ function _findInNavStack(stack, cursor, href) {
                 nav.style.removeProperty('-webkit-app-region');
                 nav.style.removeProperty('width');
                 nav.style.removeProperty('visibility');
+            }
+        }
+        if (floatingNav) {
+            const isFS = document.body ? (document.body.classList.contains('kapple-fullscreen') || document.body.hasAttribute('data-kapple-fullscreen')) : false;
+            if (collapsed && !isFS) {
+                floatingNav.style.setProperty('display', 'flex', 'important');
+            } else {
+                floatingNav.style.setProperty('display', 'none', 'important');
             }
         }
     }
@@ -828,24 +837,35 @@ function _findInNavStack(stack, cursor, href) {
         let isFS = Boolean(document.fullscreenElement);
 
         if (!isFS) {
-            const lyrics = document.querySelector('[data-testid="lyrics-fullscreen-modal"]');
-            if (lyrics && lyrics.offsetHeight > 0) isFS = true;
-        }
-
-        if (!isFS) {
             const awk = document.querySelector('apple-music-video-player')?.shadowRoot;
             const container = awk?.querySelector('.container.takeover.show') || awk?.querySelector('.container.takeover');
-            if (container && container.offsetHeight > 0) {
+            if (container && container.offsetHeight > 0 && typeof window.getComputedStyle === 'function' && window.getComputedStyle(container).visibility !== 'hidden') {
                 isFS = true;
             } else {
                 const exitBtn = awk?.querySelector('amp-playback-controls-exit');
-                if (exitBtn && exitBtn.offsetHeight > 0) isFS = true;
+                if (exitBtn && exitBtn.offsetHeight > 0 && typeof window.getComputedStyle === 'function' && window.getComputedStyle(exitBtn).visibility !== 'hidden') isFS = true;
             }
         }
 
         if (!isFS) {
             const lightExit = document.querySelector('amp-playback-controls-exit');
-            if (lightExit && lightExit.offsetHeight > 0) isFS = true;
+            if (lightExit && lightExit.offsetHeight > 0 && typeof window.getComputedStyle === 'function') {
+                const st = window.getComputedStyle(lightExit);
+                if (st.display !== 'none' && st.visibility !== 'hidden' && parseFloat(st.opacity || '1') > 0.5) {
+                    isFS = true;
+                }
+            }
+        }
+
+        if (!isFS) {
+            const lyrics = document.querySelector('[data-testid="lyrics-fullscreen-modal"]');
+            if (lyrics && lyrics.offsetHeight > 0 && typeof window.getComputedStyle === 'function') {
+                const st = window.getComputedStyle(lyrics);
+                const rect = lyrics.getBoundingClientRect();
+                if (st.display !== 'none' && st.visibility !== 'hidden' && st.pointerEvents !== 'none' && parseFloat(st.opacity || '1') > 0.5 && rect.width > 200 && rect.height > 200 && rect.top <= 20 && rect.left <= 20) {
+                    isFS = true;
+                }
+            }
         }
 
         if (!isFS && typeof document.elementsFromPoint === 'function') {
@@ -854,7 +874,7 @@ function _findInNavStack(stack, cursor, href) {
                 if (el.closest && (el.closest('#kapple-sidebar-floating-nav') || el.closest('#kapple-nav-buttons') || el.closest('nav.navigation'))) continue;
                 if (el.closest && el.closest('amp-playback-controls-exit')) {
                     const exit = el.closest('amp-playback-controls-exit');
-                    if (exit && exit.offsetHeight > 0) {
+                    if (exit && exit.offsetHeight > 0 && typeof window.getComputedStyle === 'function' && window.getComputedStyle(exit).visibility !== 'hidden') {
                         isFS = true;
                         break;
                     }
@@ -862,18 +882,21 @@ function _findInNavStack(stack, cursor, href) {
             }
         }
 
-        document.body.classList.toggle('kapple-fullscreen', isFS);
-        if (isFS) {
-            document.body.setAttribute('data-kapple-fullscreen', 'true');
-        } else {
-            document.body.removeAttribute('data-kapple-fullscreen');
+        if (document.body) {
+            document.body.classList.toggle('kapple-fullscreen', isFS);
+            if (isFS) {
+                document.body.setAttribute('data-kapple-fullscreen', 'true');
+            } else {
+                document.body.removeAttribute('data-kapple-fullscreen');
+            }
         }
 
         if (floatingNav) {
-            if (isFS) {
+            const collapsed = document.body ? document.body.classList.contains('kapple-sidebar-collapsed') : false;
+            if (isFS || !collapsed) {
                 floatingNav.style.setProperty('display', 'none', 'important');
             } else {
-                floatingNav.style.removeProperty('display');
+                floatingNav.style.setProperty('display', 'flex', 'important');
             }
         }
     };
@@ -883,10 +906,11 @@ function _findInNavStack(stack, cursor, href) {
     // Re-attach if SPA navigation removes and recreates the nav element
     new MutationObserver(() => {
         if (!document.getElementById('kapple-nav-buttons') && !document.getElementById('adam-nav-buttons')) attach();
-        if (document.body && !document.getElementById('kapple-sidebar-floating-nav')) {
+        if (document.body && (!floatingNav.isConnected || !document.getElementById('kapple-sidebar-floating-nav'))) {
             document.body.appendChild(floatingNav);
         }
-        if (document.body.classList.contains('kapple-sidebar-collapsed')) _syncSidebarDOM(true);
+        const collapsed = document.body ? document.body.classList.contains('kapple-sidebar-collapsed') : false;
+        _syncSidebarDOM(collapsed);
         checkFullscreenState();
     }).observe(document.documentElement, { childList: true, subtree: true });
     setInterval(checkFullscreenState, 500);

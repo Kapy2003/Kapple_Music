@@ -65,7 +65,7 @@ test('vision-glass.js hides floating navigation in fullscreen and modal modes', 
     assert.match(vgSrc, /:fullscreen #kapple-sidebar-floating-nav/);
     assert.match(vgSrc, /body:has\(amp-playback-controls-exit\)/);
     assert.match(vgSrc, /body:has\(amp-window-takeover\)/);
-    assert.match(vgSrc, /body:has\(\[data-testid="lyrics-fullscreen-modal"\]\) #kapple-sidebar-floating-nav/);
+    assert.match(vgSrc, /body:has\(\[data-testid="lyrics-fullscreen-modal"\]\)/);
     assert.match(vgSrc, /body\.kapple-fullscreen #kapple-sidebar-floating-nav\s*\{[^}]*display:\s*none\s*!important/);
     assert.match(vgSrc, /document\.addEventListener\('fullscreenchange'/);
     assert.match(vgSrc, /document\.elementsFromPoint/);

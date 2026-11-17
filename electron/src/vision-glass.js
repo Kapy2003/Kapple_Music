@@ -222,8 +222,8 @@ sheet.replaceSync(`
   body.kapple-sidebar-collapsed nav.navigation,
   body.kapple-sidebar-collapsed [data-testid="header"],
   body.kapple-sidebar-collapsed .app-container > .header,
-  body.kapple-sidebar-collapsed .header,
-  body.kapple-sidebar-collapsed header,
+  body.kapple-sidebar-collapsed header:has(nav.navigation),
+  body.kapple-sidebar-collapsed .header:has(nav.navigation),
   body.kapple-sidebar-collapsed [class*="navigation__header"] {
     display: none !important;
     width: 0 !important;
@@ -295,7 +295,7 @@ sheet.replaceSync(`
     -webkit-app-region: no-drag;
   }
   body.kapple-sidebar-collapsed #kapple-sidebar-floating-nav {
-    display: flex;
+    display: flex !important;
   }
   :fullscreen #kapple-sidebar-floating-nav,
   :-webkit-full-screen #kapple-sidebar-floating-nav,
@@ -304,8 +304,6 @@ sheet.replaceSync(`
   body:has(amp-playback-controls-exit) #kapple-sidebar-floating-nav,
   body:has(amp-window-takeover) #kapple-sidebar-floating-nav,
   body:has(apple-music-video-player) #kapple-sidebar-floating-nav,
-  body:has(div.now-playing-structure) #kapple-sidebar-floating-nav,
-  body:has([class*="now-playing-structure"]) #kapple-sidebar-floating-nav,
   body:has(.container.takeover) #kapple-sidebar-floating-nav,
   body:has([class*="takeover"]) #kapple-sidebar-floating-nav,
   body:has(amp-lyrics) #kapple-sidebar-floating-nav,
@@ -314,10 +312,6 @@ sheet.replaceSync(`
   body:has([class*="lyrics-page"]) #kapple-sidebar-floating-nav,
   body:has([class*="video-player"]) #kapple-sidebar-floating-nav,
   body:has([data-testid="video-player"]) #kapple-sidebar-floating-nav,
-  body:has(button[aria-label*="close" i]) #kapple-sidebar-floating-nav,
-  body:has(button[aria-label*="exit" i]) #kapple-sidebar-floating-nav,
-  body:has(button[aria-label*="dismiss" i]) #kapple-sidebar-floating-nav,
-  body:has(dialog[open]) #kapple-sidebar-floating-nav,
   body.kapple-fullscreen #kapple-sidebar-floating-nav {
     display: none !important;
   }
@@ -720,7 +714,7 @@ function _findInNavStack(stack, cursor, href) {
         const header = document.querySelector('[data-testid="header"]') ||
                        document.querySelector('.app-container > .header') ||
                        document.querySelector('.header:has(nav)') ||
-                       document.querySelector('nav.navigation')?.parentElement;
+                       document.querySelector('nav.navigation');
         if (header) {
             if (collapsed) {
                 header.style.setProperty('display', 'none', 'important');
@@ -831,10 +825,9 @@ function _findInNavStack(stack, cursor, href) {
             document.fullscreenElement ||
             document.querySelector(
                 'amp-playback-controls-exit, amp-window-takeover, apple-music-video-player, ' +
-                'div.now-playing-structure, [class*="now-playing-structure"], .container.takeover, [class*="takeover"], ' +
-                'amp-lyrics, [data-testid="lyrics-fullscreen-modal"], [class*="lyrics-fullscreen"], [class*="lyrics-page"], ' +
-                '[class*="video-player"], [data-testid="video-player"], dialog[open], ' +
-                'button[aria-label*="close" i], button[aria-label*="exit" i], button[aria-label*="dismiss" i]'
+                '.container.takeover, [class*="takeover"], amp-lyrics, ' +
+                '[data-testid="lyrics-fullscreen-modal"], [class*="lyrics-fullscreen"], [class*="lyrics-page"], ' +
+                '[class*="video-player"], [data-testid="video-player"]'
             )
         );
 
@@ -848,8 +841,8 @@ function _findInNavStack(stack, cursor, href) {
         if (!isFS && typeof document.elementsFromPoint === 'function') {
             const els = document.elementsFromPoint(24, 24);
             for (const el of els) {
-                if (el.closest && el.closest('#kapple-sidebar-floating-nav')) continue;
-                if (el.closest && el.closest('button, [role="button"], amp-playback-controls-exit, [aria-label*="close" i], [aria-label*="exit" i], [aria-label*="dismiss" i], .container.takeover, .now-playing-structure')) {
+                if (el.closest && (el.closest('#kapple-sidebar-floating-nav') || el.closest('#kapple-nav-buttons') || el.closest('nav.navigation'))) continue;
+                if (el.closest && el.closest('amp-playback-controls-exit, [aria-label*="exit fullscreen" i], [aria-label*="close video" i]')) {
                     isFS = true;
                     break;
                 }
@@ -860,7 +853,7 @@ function _findInNavStack(stack, cursor, href) {
         if (floatingNav) {
             if (isFS) {
                 floatingNav.style.setProperty('display', 'none', 'important');
-            } else if (document.body.classList.contains('kapple-sidebar-collapsed')) {
+            } else {
                 floatingNav.style.removeProperty('display');
             }
         }

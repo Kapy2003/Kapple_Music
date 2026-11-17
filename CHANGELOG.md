@@ -3,6 +3,18 @@
 All notable changes to Kapple Music, from the first release. The format follows Keep a
 Changelog, and releases are numbered MAJOR.MINOR.PATCH.
 
+## [1.1.8] - 2026-11-17
+
+### Added
+- **Background OTA Updates**: automated silent background downloading of new releases for both portable AppImage builds and desktop `.run` installations (`~/.local/lib/kapple-music`).
+- **One-Click In-Place Apply**: instant relaunch upon clicking "Restart to Apply" without waiting for manual downloads or opening external browsers.
+- **Updater Status Channel**: added `updater:status` IPC event streaming live download progress and ready state to the Settings dialog and system tray.
+- **Media Showcase**: added banner image and 20s launch demo video preview to README.
+
+### Fixed
+- **Settings Dialog**: resolved a `TypeError` in `makeRow` when passed a string value, ensuring all 14 settings sections render reliably.
+- **Dynamic Versioning**: removed hardcoded version fallback strings in `preload.cjs` and `engine-playback.js`, dynamically propagating git release tags end-to-end.
+
 ## [1.1.7] - 2026-11-17
 
 ### Added

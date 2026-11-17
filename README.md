@@ -77,7 +77,7 @@ https://github.com/user-attachments/assets/fd0ad5e3-c5da-4722-96c0-22102a8e0fd0
 </details>
 
 ### System Integration
-- **In-place OTA Updater** — zero-dependency automatic update checks via GitHub Releases; check and update with a single click from the Settings dialog or the taskbar/tray menu
+- **Background OTA Updater** — zero-dependency automatic background update checks and downloads via GitHub Releases; downloads new releases silently in the background for both portable AppImages and installed desktop builds, with instant 1-click in-place application from the toast notification, Settings dialog, or system tray menu
 - **MPRIS2** — play/pause, next/prev, seek, shuffle, and volume via D-Bus (works with KDE, GNOME shell, Waybar, etc.)
 
 <div align="center">

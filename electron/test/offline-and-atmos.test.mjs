@@ -71,3 +71,11 @@ test('vision-glass.js hides floating navigation in fullscreen and modal modes', 
     assert.match(vgSrc, /document\.elementsFromPoint/);
     assert.match(vgSrc, /floatingNav\.style\.setProperty\('display',\s*'none',\s*'important'\)/);
 });
+
+test('engine-playback.js makeRow safely handles string and Node values', () => {
+    assert.match(pbSrc, /typeof val === 'string'/);
+    assert.match(pbSrc, /function _buildUpdatesSection\(\)/);
+    assert.match(pbSrc, /dlg\.appendChild\(buildAccountSection/);
+    assert.match(pbSrc, /dlg\.appendChild\(_buildUpdatesSection\(\)\)/);
+    assert.match(pbSrc, /dlg\.appendChild\(_buildEngineStatusSection/);
+});

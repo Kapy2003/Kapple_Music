@@ -9093,7 +9093,14 @@ window.kappleGetQueueInfo = function () {
             lbl.appendChild(s);
         }
         r.appendChild(lbl);
-        r.appendChild(val);
+        if (typeof val === 'string') {
+            const valEl = document.createElement('div');
+            valEl.style.cssText = FF + 'font-size:13px;color:rgba(255,255,255,0.6);';
+            valEl.textContent = val;
+            r.appendChild(valEl);
+        } else if (val) {
+            r.appendChild(val);
+        }
         return r;
     }
 
@@ -10993,7 +11000,10 @@ window.kappleGetQueueInfo = function () {
     function _buildUpdatesSection() {
         const { wrap, body } = makeSection('Updates');
         const ver = window.kappleBridge?.appVersion;
-        body.appendChild(makeRow('Version', ver ? `v${ver}` : 'Desktop Client', 'Kapple Music desktop client', false));
+        const verEl = document.createElement('span');
+        verEl.style.cssText = FF + 'font-size:12px;color:rgba(255,255,255,0.5);font-family:ui-monospace,monospace;';
+        verEl.textContent = ver ? `v${ver}` : 'Desktop Client';
+        body.appendChild(makeRow('Version', verEl, 'Kapple Music desktop client', false));
 
         const row = document.createElement('div');
         row.style.cssText = 'padding:10px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';

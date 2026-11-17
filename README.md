@@ -1,8 +1,6 @@
 <div align="center">
 
-<a href="assets/demo.mp4">
-  <img src="assets/demo.gif" alt="Kapple Music Launch Demo" width="100%"/>
-</a>
+<img src="assets/banner.jpg" alt="Kapple Music Banner" width="100%"/>
 
 # Kapple Music
 
@@ -12,11 +10,13 @@
 
 An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), music videos, downloads, and a native-feeling visionOS glass UI.
 
-🔊 **[\[Click above or here to watch with full audio soundtrack\]](https://github.com/user-attachments/assets/fd0ad5e3-c5da-4722-96c0-22102a8e0fd0)(assets/demo.mp4)**
+</div>
 
-<br/>
+https://github.com/user-attachments/assets/fd0ad5e3-c5da-4722-96c0-22102a8e0fd0
 
-
+<div align="center">
+  <img src="assets/screenshots/Blur-preview.png" alt="Blur theme" width="49%"/>
+  <img src="assets/screenshots/Accented-preview.png" alt="Accent theme" width="49%"/>
 </div>
 
 > [!IMPORTANT]

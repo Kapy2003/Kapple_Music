@@ -8119,10 +8119,10 @@ async function setup() {
                 const cur2 = _sessionContainers[ci];
                 const intraIdx = cur2 ? cur2.items.indexOf(newNext) : -1;
                 if (intraIdx >= 0 && intraIdx !== _sessionItemIdx + 1) {
-                    console.log('[adam] track-click: non-linear same-playlist jump to ci=', ci, 'ii=', intraIdx);
+                    console.log('[Kapple Music] track-click: non-linear same-playlist jump to ci=', ci, 'ii=', intraIdx);
                     _kappleGoto(ci, intraIdx).catch(() => {});
                 } else {
-                    console.log('[adam] track-click: inserted at next, calling _kappleNext');
+                    console.log('[Kapple Music] track-click: inserted at next, calling _kappleNext');
                     _kappleNext(true).catch(() => {});
                 }
             }
@@ -10682,7 +10682,7 @@ window.kappleGetQueueInfo = function () {
         const { wrap, body } = makeSection('Links');
         const intro = document.createElement('div');
         intro.style.cssText = FF + 'font-size:11px;color:rgba(255,255,255,0.42);line-height:1.5;padding:2px 0 10px;';
-        intro.textContent = 'Choose which links open in Adam. adam:// links always work. Turning a scheme on makes Adam the app your system uses for it, replacing Apple\'s Music app or another player for those links. Plain https://music.apple.com links open in your browser; turn on music:// and use the "Open in Music" button on the website to send them here.';
+        intro.textContent = 'Choose which links open in Kapple Music. kapple-music:// links always work. Turning a scheme on makes Kapple Music the app your system uses for it, replacing Apple\'s Music app or another player for those links. Plain https://music.apple.com links open in your browser; turn on music:// and use the "Open in Music" button on the website to send them here.';
         body.appendChild(intro);
         const rows = document.createElement('div');
         body.appendChild(rows);
@@ -10803,7 +10803,7 @@ window.kappleGetQueueInfo = function () {
             lfVal.appendChild(connect);
         };
         (lf.connected ? lfConnected : lfDisconnected)();
-        body.appendChild(makeRow('Account', lfVal, 'Log in and authorize Adam in the in-app Last.fm window', false));
+        body.appendChild(makeRow('Account', lfVal, 'Log in and authorize Kapple Music in the in-app Last.fm window', false));
 
         // ── ListenBrainz ─────────────────────────────────────────────────────
         body.appendChild(_scrobbleSubhead('ListenBrainz'));
@@ -10979,7 +10979,7 @@ window.kappleGetQueueInfo = function () {
         const titleBar = document.createElement('div');
         titleBar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:4px 0 4px;margin-top:-26px;';
         const title = document.createElement('h1');
-        title.textContent = 'Adam Settings';
+        title.textContent = 'Kapple Music Settings';
         title.style.cssText = FF + 'font-size:17px;font-weight:700;letter-spacing:-0.3px;margin:0;color:rgba(255,255,255,0.95);';
         const savedBadge = document.createElement('span');
         savedBadge.style.cssText = FF + 'font-size:10px;color:#30d158;opacity:0;transition:opacity 0.3s;flex-shrink:0;';
@@ -11103,7 +11103,7 @@ window.kappleGetQueueInfo = function () {
         if (!cog) {
             cog = document.createElement('button');
             cog.id = 'kapple-settings-cog';
-            cog.title = 'Adam Settings';
+            cog.title = 'Kapple Music Settings';
             cog.innerHTML = COG_SVG;
             _styleNavBtn(cog);
             cog.onclick = (e) => { e.stopPropagation(); openSettings(); };

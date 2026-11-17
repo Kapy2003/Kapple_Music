@@ -82,10 +82,32 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          node -e '
+            const fs = require("fs");
+            const tag = process.env.TAG || "";
+            const ver = tag.replace(/^v/, "");
+            if (fs.existsSync("CHANGELOG.md")) {
+              const content = fs.readFileSync("CHANGELOG.md", "utf8");
+              const start = content.indexOf("## [" + ver + "]");
+              if (start !== -1) {
+                const after = content.indexOf("\n", start) + 1;
+                const next = content.indexOf("\n## [", after);
+                const body = next !== -1 ? content.slice(after, next) : content.slice(after);
+                fs.writeFileSync(process.env.NOTES_FILE, body.trim() + "\n");
+              }
+            }
+          '
+          NOTES_ARG="--generate-notes"
+          if [ -s "$NOTES_FILE" ]; then
+            NOTES_ARG="--notes-file $NOTES_FILE"
+          elif [ -f "releases/${TAG}.md" ]; then
+            NOTES_ARG="--notes-file releases/${TAG}.md"
+          fi
+
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            NOTES_ARG="--generate-notes"
-            [ -f "releases/${TAG}.md" ] && NOTES_ARG="--notes-file releases/${TAG}.md"
             gh release create "$TAG" dist/kapple-music.run electron/dist/Kapple-Music-*-x86_64.AppImage --title "$TAG" $NOTES_ARG
           else
+            [ -s "$NOTES_FILE" ] && gh release edit "$TAG" --notes-file "$NOTES_FILE"
             gh release upload "$TAG" dist/kapple-music.run electron/dist/Kapple-Music-*-x86_64.AppImage --clobber
           fi

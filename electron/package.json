@@ -1,6 +1,6 @@
 {
   "name": "kapple-music",
-  "version": "1.1.1",
+  "version": "1.1.6",
   "description": "Kapple Music, an Apple Music desktop client for Linux",
   "license": "MIT",
   "main": "main.mjs",
@@ -22,8 +22,8 @@
   "desktopName": "kapple-music.desktop",
   "devDependencies": {
     "@eslint/js": "9.36.0",
-    "electron": "^43.1.0",
-    "electron-builder": "^26.15.3",
+    "electron": "^43.8.10",
+    "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2",
     "eslint": "9.36.0",
     "globals": "16.4.0"

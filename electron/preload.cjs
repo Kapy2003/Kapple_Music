@@ -156,7 +156,9 @@ if (IS_APPLE_MUSIC) {
     // Deep link navigation — fires when the user opens an Apple Music or kapple-music:// URL
     onOpenUrl:        (cb)    => ipcRenderer.on('kapple:open', (_, intent) => cb(intent)),
     // OTA updater
-    appVersion:        require('./package.json').version,
+    appVersion:        (() => {
+        try { return ipcRenderer.sendSync('app:version') || '1.1.6'; } catch (_) { return '1.1.6'; }
+    })(),
     updaterCheck:      (force) => ipcRenderer.invoke('updater:check', force),
     updaterApply:      (url)   => ipcRenderer.invoke('updater:apply', url),
     onUpdateAvailable: (cb)    => ipcRenderer.on('updater:available', (_, info) => cb(info)),
@@ -196,7 +198,8 @@ function injectAppleMusicStyles() {
         }
         button, a, input, select, textarea, [role="button"], [role="slider"], [role="search"],
         [class*="btn"], #kapple-settings-cog, #kapple-downloads-btn, #kapple-miniplayer-btn,
-        #kapple-nav-buttons, .web-chrome-playback-controls, .web-chrome-playback-lcd,
+        #kapple-nav-buttons, #kapple-sidebar-floating-nav, #kapple-sidebar-floating-nav *,
+        .web-chrome-playback-controls, .web-chrome-playback-lcd,
         .web-navigation__auth,
         body.kapple-sidebar-collapsed [data-testid="header"],
         body.kapple-sidebar-collapsed .header,

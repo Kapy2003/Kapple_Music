@@ -257,7 +257,7 @@ make dev         # Install dependencies, build bundles & engine, and launch the 
 
 ```bash
 # Arch
-sudo pacman -S vlc nodejs npm
+sudo pacman -S vlc nodejs npm go
 
 # Ubuntu/Debian
 sudo apt install vlc nodejs npm build-essential

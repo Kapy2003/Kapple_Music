@@ -840,11 +840,12 @@ function createWindow() {
         width: 1200,
         height: 800,
         icon: _appIconPath,
-        // Fully transparent so the compositor (Hyprland/KWin) can render
-        // the desktop behind the window with its own blur effect, giving
-        // us the visionOS "glass over room" look for free.
-        backgroundColor: IS_LINUX ? '#00000000' : '#161618',
-        transparent: IS_LINUX,
+        // On Linux, transparent window is only supported when the compositor actually
+        // provides blur-behind (Hyprland or KDE X11 with blur atom). Compositors without
+        // blur-behind (KDE Wayland, GNOME) render a broken see-through void, so we keep
+        // an opaque surface with standard dark theme background.
+        backgroundColor: (IS_LINUX && (_isHyprland || (_isKde && !_isWayland))) ? '#00000000' : '#161618',
+        transparent: Boolean(IS_LINUX && (_isHyprland || (_isKde && !_isWayland))),
         show: false,
         title: 'Kapple Music',
         webPreferences: {
@@ -982,9 +983,10 @@ function createWindow() {
     // webContents.insertCSS() is Electron's dedicated API for injecting CSS
     // before the page renders, unlike executeJavaScript which needs dom-ready.
     const { glassBlur = 20, glassOpacity = 0.07, bgBlur = 18 } = loadPrefs();
+    const _nativeGlass = Boolean(IS_LINUX && (_isHyprland || (_isKde && !_isWayland)));
     const earlyCss = `
         :root { --kapple-glass-blur: ${glassBlur}px; --kapple-glass-opacity: ${glassOpacity}; --kapple-art-tint: rgba(255,255,255,0); --kapple-fallback-bg: none; --kapple-bg-blur: ${bgBlur}px; }
-        html, body { background: transparent !important; overscroll-behavior: none !important; }
+        html, body { background: ${_nativeGlass ? 'transparent' : '#161618'} !important; overscroll-behavior: none !important; }
         /* Strip grey tint from alternating content sections — let album art / wallpaper show through */
         .section--alternate, [class*="section--alternate"] { background: transparent !important; }
         /* "Also available in the iTunes Store" CTA — hidden everywhere. Matched by
@@ -1006,7 +1008,8 @@ function createWindow() {
         }
         button, a, input, select, textarea, [role="button"], [role="slider"], [role="search"],
         [class*="btn"], #kapple-settings-cog, #kapple-downloads-btn, #kapple-miniplayer-btn,
-        #kapple-nav-buttons, .web-chrome-playback-controls, .web-chrome-playback-lcd,
+        #kapple-nav-buttons, #kapple-sidebar-floating-nav, #kapple-sidebar-floating-nav *,
+        .web-chrome-playback-controls, .web-chrome-playback-lcd,
         .web-navigation__auth,
         body.kapple-sidebar-collapsed [data-testid="header"],
         body.kapple-sidebar-collapsed .header,
@@ -1815,6 +1818,10 @@ ipcMain.handle('downloads:list', async () => {
     scan(dir);
     return results;
 });
+ipcMain.on('app:version', (event) => {
+    event.returnValue = app.getVersion();
+});
+ipcMain.handle('app:version', () => app.getVersion());
 ipcMain.handle('updater:check', async (_, force) => {
     return checkAppUpdate({
         currentVersion: app.getVersion(),

@@ -297,6 +297,18 @@ sheet.replaceSync(`
   body.kapple-sidebar-collapsed #kapple-sidebar-floating-nav {
     display: flex !important;
   }
+  :fullscreen #kapple-sidebar-floating-nav,
+  :-webkit-full-screen #kapple-sidebar-floating-nav,
+  body:has(:fullscreen) #kapple-sidebar-floating-nav,
+  body:has([data-testid="lyrics-fullscreen-modal"]) #kapple-sidebar-floating-nav,
+  body:has([class*="lyrics-fullscreen"]) #kapple-sidebar-floating-nav,
+  body:has([class*="lyrics-page"]) #kapple-sidebar-floating-nav,
+  body:has([class*="video-player"]) #kapple-sidebar-floating-nav,
+  body:has([data-testid="video-player"]) #kapple-sidebar-floating-nav,
+  body:has(dialog[open]) #kapple-sidebar-floating-nav,
+  body.kapple-fullscreen #kapple-sidebar-floating-nav {
+    display: none !important;
+  }
 
   /* ── Account button — strip pill, keep context menu ──
      Apple: .account-menu.svelte-XXXX.account-menu--expanded = 3 classes (0,3,0).
@@ -802,9 +814,19 @@ function _findInNavStack(stack, cursor, href) {
     if (_findNavHeader()) attach();
     else navWatcher.observe(document.documentElement, { childList: true, subtree: true });
 
+    const checkFullscreenState = () => {
+        const isFS = !!(
+            document.fullscreenElement ||
+            document.querySelector('[data-testid="lyrics-fullscreen-modal"], [class*="lyrics-fullscreen"], [class*="lyrics-page"], [data-testid="video-player"]')
+        );
+        document.body.classList.toggle('kapple-fullscreen', isFS);
+    };
+    document.addEventListener('fullscreenchange', checkFullscreenState);
+
     // Re-attach if SPA navigation removes and recreates the nav element
     new MutationObserver(() => {
         if (!document.getElementById('kapple-nav-buttons') && !document.getElementById('adam-nav-buttons') && _findNavHeader()) attach();
         if (document.body.classList.contains('kapple-sidebar-collapsed')) _syncSidebarDOM(true);
+        checkFullscreenState();
     }).observe(document.documentElement, { childList: true, subtree: true });
 })();

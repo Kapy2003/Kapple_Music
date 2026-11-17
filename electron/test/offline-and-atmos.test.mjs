@@ -59,3 +59,11 @@ test('engine-playback.js wires Dolby Atmos capabilities to session requests', ()
     assert.match(pbSrc, /atmos:\s*!isVideo && _atmosEnabled && Boolean\(_engineCaps\.atmos\)/);
     assert.match(pbSrc, /atmos:\s*_atmosEnabled && Boolean\(_engineCaps\.atmos\)/);
 });
+
+test('vision-glass.js hides floating navigation in fullscreen and modal modes', () => {
+    const vgSrc = readFileSync(path.join(dir, '..', 'src', 'vision-glass.js'), 'utf8');
+    assert.match(vgSrc, /:fullscreen #kapple-sidebar-floating-nav/);
+    assert.match(vgSrc, /body:has\(\[data-testid="lyrics-fullscreen-modal"\]\) #kapple-sidebar-floating-nav/);
+    assert.match(vgSrc, /body\.kapple-fullscreen #kapple-sidebar-floating-nav\s*\{[^}]*display:\s*none\s*!important/);
+    assert.match(vgSrc, /document\.addEventListener\('fullscreenchange'/);
+});

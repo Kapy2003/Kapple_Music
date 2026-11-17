@@ -10992,7 +10992,7 @@ window.kappleGetQueueInfo = function () {
 
     function _buildUpdatesSection() {
         const { wrap, body } = makeSection('Updates');
-        const ver = window.kappleBridge?.appVersion || '1.1.1';
+        const ver = window.kappleBridge?.appVersion || '1.1.6';
         body.appendChild(makeRow('Version', `v${ver}`, 'Kapple Music desktop client', false));
 
         const row = document.createElement('div');
@@ -11147,6 +11147,7 @@ window.kappleGetQueueInfo = function () {
         if (myGen !== _settingsGen) { _restoreProxy(); return; }
 
         dlg.appendChild(buildAccountSection(drm, openSettings));
+        dlg.appendChild(_buildUpdatesSection());
         dlg.appendChild(_buildEngineStatusSection(drm));
         dlg.appendChild(_buildDisplaySection(prefs));
         dlg.appendChild(themeWrap);
@@ -11163,7 +11164,6 @@ window.kappleGetQueueInfo = function () {
         dlg.appendChild(scrobbleWrap);
         dlg.appendChild(historyWrap);
         dlg.appendChild(libraryWrap);
-        dlg.appendChild(_buildUpdatesSection());
     }
 
     // ── Settings cog + downloads button next to account row ───────────────

@@ -2876,6 +2876,40 @@ function createTray() {
         { label: (miniWin && !miniWin.isDestroyed()) ? 'Hide Mini Player' : 'Mini Player', click: toggleMiniPlayer },
         { type: 'separator' },
         {
+            label: 'Check for Updates…',
+            click: async () => {
+                try {
+                    const info = await checkAppUpdate({
+                        currentVersion: app.getVersion(),
+                        netFetch: electronNet.fetch.bind(electronNet),
+                        force: true,
+                    });
+                    if (info?.hasUpdate && win && !win.isDestroyed()) {
+                        win.webContents.send('updater:available', info);
+                        if (!win.isVisible()) { win.show(); win.focus(); }
+                    } else if (info?.error) {
+                        dialog.showMessageBox(win, {
+                            type: 'warning',
+                            title: 'Update Check Failed',
+                            message: `Could not check for updates: ${info.error}`,
+                        });
+                    } else {
+                        dialog.showMessageBox(win, {
+                            type: 'info',
+                            title: 'Up to Date',
+                            message: `Kapple Music v${app.getVersion()} is the latest version.`,
+                        });
+                    }
+                } catch (e) {
+                    dialog.showMessageBox(win, {
+                        type: 'error',
+                        title: 'Update Check Error',
+                        message: e.message || String(e),
+                    });
+                }
+            },
+        },
+        {
             label: 'Restart App',
             click: async () => {
                 // Clear the resume state so a deliberate restart starts fresh,

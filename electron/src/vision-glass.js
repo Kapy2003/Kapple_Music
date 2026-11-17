@@ -220,26 +220,17 @@ sheet.replaceSync(`
 
   /* ── Collapsible sidebar ── */
   body.kapple-sidebar-collapsed nav.navigation,
-  body.kapple-sidebar-collapsed [data-testid="header"],
-  body.kapple-sidebar-collapsed .app-container > .header,
-  body.kapple-sidebar-collapsed header:has(nav.navigation),
-  body.kapple-sidebar-collapsed .header:has(nav.navigation),
-  body.kapple-sidebar-collapsed [class*="navigation__header"] {
+  body.kapple-sidebar-collapsed [data-testid="header"] {
     display: none !important;
     width: 0 !important;
     min-width: 0 !important;
     max-width: 0 !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    max-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
     opacity: 0 !important;
     pointer-events: none !important;
     visibility: hidden !important;
-    -webkit-app-region: no-drag !important;
-    z-index: -99999 !important;
   }
   body.kapple-sidebar-collapsed,
   html:has(body.kapple-sidebar-collapsed) {
@@ -247,26 +238,14 @@ sheet.replaceSync(`
     --navigation-width: 0px !important;
     --web-navigation-sidebar-width: 0px !important;
   }
+  body.kapple-sidebar-collapsed .web-chrome,
+  body.kapple-sidebar-collapsed [class*="web-chrome"],
   body.kapple-sidebar-collapsed .app-container,
   body.kapple-sidebar-collapsed [data-testid="app-container"],
   body.kapple-sidebar-collapsed [class*="app-container"],
   body.kapple-sidebar-collapsed [class*="body-container"],
-  body.kapple-sidebar-collapsed [class*="web-chrome"] {
+  body.kapple-sidebar-collapsed [class*="content-container"] {
     grid-template-columns: 0px 1fr !important;
-    grid-template-areas: "structure-main-section structure-main-section" "structure-upsell structure-upsell" "structure-locale-switcher structure-locale-switcher" !important;
-  }
-  body.kapple-sidebar-collapsed .scrollable-page,
-  body.kapple-sidebar-collapsed [data-testid="main-section"],
-  body.kapple-sidebar-collapsed #scrollable-page {
-    grid-column: 1 / -1 !important;
-    padding-inline-start: 0px !important;
-    padding-left: 0px !important;
-    margin-left: 0px !important;
-    left: 0px !important;
-    transition: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    pointer-events: auto !important;
   }
   body.kapple-sidebar-collapsed main,
   body.kapple-sidebar-collapsed [role="main"] {
@@ -303,15 +282,7 @@ sheet.replaceSync(`
   body:has(:fullscreen) #kapple-sidebar-floating-nav,
   body:has(amp-playback-controls-exit) #kapple-sidebar-floating-nav,
   body:has(amp-window-takeover) #kapple-sidebar-floating-nav,
-  body:has(apple-music-video-player) #kapple-sidebar-floating-nav,
-  body:has(.container.takeover) #kapple-sidebar-floating-nav,
-  body:has([class*="takeover"]) #kapple-sidebar-floating-nav,
-  body:has(amp-lyrics) #kapple-sidebar-floating-nav,
   body:has([data-testid="lyrics-fullscreen-modal"]) #kapple-sidebar-floating-nav,
-  body:has([class*="lyrics-fullscreen"]) #kapple-sidebar-floating-nav,
-  body:has([class*="lyrics-page"]) #kapple-sidebar-floating-nav,
-  body:has([class*="video-player"]) #kapple-sidebar-floating-nav,
-  body:has([data-testid="video-player"]) #kapple-sidebar-floating-nav,
   body.kapple-fullscreen #kapple-sidebar-floating-nav {
     display: none !important;
   }
@@ -708,26 +679,34 @@ function _findInNavStack(stack, cursor, href) {
     floatingFwd.disabled = true;
 
     floatingNav.append(floatingSidebarBtn, floatingBack, floatingFwd);
+    const MINI_SVG = `<svg viewBox="0 0 14 11" fill="none" stroke="currentColor" style="width:14px;height:11px"><rect x="0.75" y="0.75" width="12.5" height="9.5" rx="1.75" style="stroke-width:1;fill:none"/><rect x="7" y="5.5" width="6" height="4" rx="1" style="fill:currentColor;stroke:none"/></svg>`;
+    const floatingMiniBtn = document.createElement('button');
+    floatingMiniBtn.className = 'kapple-nav-btn';
+    floatingMiniBtn.innerHTML = MINI_SVG;
+    floatingMiniBtn.title = 'Mini Player (Ctrl+M)';
+    floatingMiniBtn.setAttribute('aria-label', 'Mini Player');
+    floatingMiniBtn.onclick = (e) => {
+        e.stopPropagation();
+        window.kappleBridge?.toggleMiniPlayer?.();
+    };
+    floatingNav.appendChild(floatingMiniBtn);
     document.body.appendChild(floatingNav);
 
     function _syncSidebarDOM(collapsed) {
-        const header = document.querySelector('[data-testid="header"]') ||
-                       document.querySelector('.app-container > .header') ||
-                       document.querySelector('.header:has(nav)') ||
-                       document.querySelector('nav.navigation');
-        if (header) {
+        const nav = document.querySelector('nav.navigation');
+        if (nav) {
             if (collapsed) {
-                header.style.setProperty('display', 'none', 'important');
-                header.style.setProperty('pointer-events', 'none', 'important');
-                header.style.setProperty('-webkit-app-region', 'no-drag', 'important');
-                header.style.setProperty('width', '0px', 'important');
-                header.style.setProperty('visibility', 'hidden', 'important');
+                nav.style.setProperty('display', 'none', 'important');
+                nav.style.setProperty('pointer-events', 'none', 'important');
+                nav.style.setProperty('-webkit-app-region', 'no-drag', 'important');
+                nav.style.setProperty('width', '0px', 'important');
+                nav.style.setProperty('visibility', 'hidden', 'important');
             } else {
-                header.style.removeProperty('display');
-                header.style.removeProperty('pointer-events');
-                header.style.removeProperty('-webkit-app-region');
-                header.style.removeProperty('width');
-                header.style.removeProperty('visibility');
+                nav.style.removeProperty('display');
+                nav.style.removeProperty('pointer-events');
+                nav.style.removeProperty('-webkit-app-region');
+                nav.style.removeProperty('width');
+                nav.style.removeProperty('visibility');
             }
         }
     }
@@ -765,6 +744,10 @@ function _findInNavStack(stack, cursor, href) {
         if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 's' || e.key === 'S' || e.key === 'b' || e.key === 'B')) {
             e.preventDefault();
             toggleSidebar();
+        }
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'm' || e.key === 'M')) {
+            e.preventDefault();
+            window.kappleBridge?.toggleMiniPlayer?.();
         }
     });
 
@@ -824,16 +807,14 @@ function _findInNavStack(stack, cursor, href) {
         let isFS = !!(
             document.fullscreenElement ||
             document.querySelector(
-                'amp-playback-controls-exit, amp-window-takeover, apple-music-video-player, ' +
-                '.container.takeover, [class*="takeover"], amp-lyrics, ' +
-                '[data-testid="lyrics-fullscreen-modal"], [class*="lyrics-fullscreen"], [class*="lyrics-page"], ' +
-                '[class*="video-player"], [data-testid="video-player"]'
+                'amp-playback-controls-exit, amp-window-takeover, ' +
+                '[data-testid="lyrics-fullscreen-modal"]'
             )
         );
 
         if (!isFS) {
             const awk = document.querySelector('apple-music-video-player')?.shadowRoot;
-            if (awk?.querySelector('amp-playback-controls-exit, amp-window-takeover, .container.takeover')) {
+            if (awk?.querySelector('amp-playback-controls-exit, amp-window-takeover')) {
                 isFS = true;
             }
         }
@@ -842,7 +823,7 @@ function _findInNavStack(stack, cursor, href) {
             const els = document.elementsFromPoint(24, 24);
             for (const el of els) {
                 if (el.closest && (el.closest('#kapple-sidebar-floating-nav') || el.closest('#kapple-nav-buttons') || el.closest('nav.navigation'))) continue;
-                if (el.closest && el.closest('amp-playback-controls-exit, [aria-label*="exit fullscreen" i], [aria-label*="close video" i]')) {
+                if (el.closest && el.closest('amp-playback-controls-exit')) {
                     isFS = true;
                     break;
                 }

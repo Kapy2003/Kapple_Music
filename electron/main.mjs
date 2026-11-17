@@ -2781,7 +2781,10 @@ function createMiniPlayer() {
     });
     miniWin.setAlwaysOnTop(true, 'floating');
     miniWin.loadFile(path.join(__dirname, 'miniplayer.html'));
-    miniWin.once('ready-to-show', () => {
+    let miniShown = false;
+    const showMini = () => {
+        if (miniShown || !miniWin || miniWin.isDestroyed()) return;
+        miniShown = true;
         miniWin.show();
         // Hide the main window (Apple's MiniPlayer replaces it) and ask the
         // renderer to push a full now-playing snapshot to the mini.
@@ -2797,7 +2800,9 @@ function createMiniPlayer() {
             volume: _lastMprisVolume,
         });
         try { win?.webContents.send('miniplayer:sync'); } catch (_) { }
-    });
+    };
+    miniWin.once('ready-to-show', showMini);
+    setTimeout(showMini, 1500);
     miniWin.on('closed', () => { miniWin = null; restoreMainFromMini(); });
 }
 

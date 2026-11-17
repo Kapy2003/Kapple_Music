@@ -703,7 +703,15 @@ function _findInNavStack(stack, cursor, href) {
         window.kappleBridge?.toggleMiniPlayer?.();
     };
     floatingNav.appendChild(floatingMiniBtn);
-    document.body.appendChild(floatingNav);
+    if (document.body) {
+        document.body.appendChild(floatingNav);
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            if (document.body && !document.getElementById('kapple-sidebar-floating-nav')) {
+                document.body.appendChild(floatingNav);
+            }
+        });
+    }
 
     function _syncSidebarDOM(collapsed) {
         const nav = document.querySelector('nav.navigation');
@@ -858,6 +866,9 @@ function _findInNavStack(stack, cursor, href) {
     // Re-attach if SPA navigation removes and recreates the nav element
     new MutationObserver(() => {
         if (!document.getElementById('kapple-nav-buttons') && !document.getElementById('adam-nav-buttons')) attach();
+        if (document.body && !document.getElementById('kapple-sidebar-floating-nav')) {
+            document.body.appendChild(floatingNav);
+        }
         if (document.body.classList.contains('kapple-sidebar-collapsed')) _syncSidebarDOM(true);
         checkFullscreenState();
     }).observe(document.documentElement, { childList: true, subtree: true });

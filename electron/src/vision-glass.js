@@ -847,6 +847,20 @@ function _findInNavStack(stack, cursor, href) {
             }
         }
 
+        if (!isFS) {
+            const lyricsModal = document.querySelector('[data-testid="lyrics-fullscreen-modal"]');
+            if (lyricsModal && typeof window.getComputedStyle === 'function') {
+                const st = window.getComputedStyle(lyricsModal);
+                const rect = lyricsModal.getBoundingClientRect();
+                if (st.display !== 'none' && st.visibility !== 'hidden' && parseFloat(st.opacity || '1') > 0.5 && rect.height > window.innerHeight * 0.5) {
+                    const hasLyrics = lyricsModal.querySelector('amp-playback-controls-progress, amp-lyrics, [class*="lyrics"]');
+                    if (hasLyrics) {
+                        isFS = true;
+                    }
+                }
+            }
+        }
+
         if (!isFS && typeof document.elementsFromPoint === 'function') {
             const els = document.elementsFromPoint(24, 24);
             for (const el of els) {

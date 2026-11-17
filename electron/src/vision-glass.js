@@ -838,31 +838,10 @@ function _findInNavStack(stack, cursor, href) {
 
         if (!isFS) {
             const awk = document.querySelector('apple-music-video-player')?.shadowRoot;
-            const container = awk?.querySelector('.container.takeover.show') || awk?.querySelector('.container.takeover');
-            if (container && container.offsetHeight > 0 && typeof window.getComputedStyle === 'function' && window.getComputedStyle(container).visibility !== 'hidden') {
-                isFS = true;
-            } else {
+            const container = awk?.querySelector('.container.takeover.show');
+            if (container && container.offsetHeight > 0) {
                 const exitBtn = awk?.querySelector('amp-playback-controls-exit');
-                if (exitBtn && exitBtn.offsetHeight > 0 && typeof window.getComputedStyle === 'function' && window.getComputedStyle(exitBtn).visibility !== 'hidden') isFS = true;
-            }
-        }
-
-        if (!isFS) {
-            const lightExit = document.querySelector('amp-playback-controls-exit');
-            if (lightExit && lightExit.offsetHeight > 0 && typeof window.getComputedStyle === 'function') {
-                const st = window.getComputedStyle(lightExit);
-                if (st.display !== 'none' && st.visibility !== 'hidden' && parseFloat(st.opacity || '1') > 0.5) {
-                    isFS = true;
-                }
-            }
-        }
-
-        if (!isFS) {
-            const lyrics = document.querySelector('[data-testid="lyrics-fullscreen-modal"]');
-            if (lyrics && lyrics.offsetHeight > 0 && typeof window.getComputedStyle === 'function') {
-                const st = window.getComputedStyle(lyrics);
-                const rect = lyrics.getBoundingClientRect();
-                if (st.display !== 'none' && st.visibility !== 'hidden' && st.pointerEvents !== 'none' && parseFloat(st.opacity || '1') > 0.5 && rect.width > 200 && rect.height > 200 && rect.top <= 20 && rect.left <= 20) {
+                if (exitBtn && exitBtn.offsetHeight > 0 && typeof window.getComputedStyle === 'function' && window.getComputedStyle(exitBtn).visibility !== 'hidden') {
                     isFS = true;
                 }
             }
@@ -874,9 +853,12 @@ function _findInNavStack(stack, cursor, href) {
                 if (el.closest && (el.closest('#kapple-sidebar-floating-nav') || el.closest('#kapple-nav-buttons') || el.closest('nav.navigation'))) continue;
                 if (el.closest && el.closest('amp-playback-controls-exit')) {
                     const exit = el.closest('amp-playback-controls-exit');
-                    if (exit && exit.offsetHeight > 0 && typeof window.getComputedStyle === 'function' && window.getComputedStyle(exit).visibility !== 'hidden') {
-                        isFS = true;
-                        break;
+                    if (exit && exit.offsetHeight > 0 && typeof window.getComputedStyle === 'function') {
+                        const st = window.getComputedStyle(exit);
+                        if (st.display !== 'none' && st.visibility !== 'hidden' && parseFloat(st.opacity || '1') > 0.5) {
+                            isFS = true;
+                            break;
+                        }
                     }
                 }
             }

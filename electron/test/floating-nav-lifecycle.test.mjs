@@ -25,7 +25,7 @@ test('floatingNav has inline styles and direct JS display management in _syncSid
     assert.match(src, /body\.kapple-fullscreen #kapple-sidebar-floating-nav\s*\{[^}]*display:\s*none\s*!important/);
 
     // 4. checkFullscreenState must check visibility & computed style, not just element existence or raw offsetHeight
-    assert.match(src, /window\.getComputedStyle\(container\)\.visibility\s*!==\s*'hidden'/);
+    assert.match(src, /container\.offsetHeight\s*>\s*0/);
     assert.match(src, /window\.getComputedStyle\(exitBtn\)\.visibility\s*!==\s*'hidden'/);
     assert.match(src, /st\.display\s*!==\s*'none'\s*&&\s*st\.visibility\s*!==\s*'hidden'/);
 

@@ -10992,8 +10992,8 @@ window.kappleGetQueueInfo = function () {
 
     function _buildUpdatesSection() {
         const { wrap, body } = makeSection('Updates');
-        const ver = window.kappleBridge?.appVersion || '1.1.6';
-        body.appendChild(makeRow('Version', `v${ver}`, 'Kapple Music desktop client', false));
+        const ver = window.kappleBridge?.appVersion;
+        body.appendChild(makeRow('Version', ver ? `v${ver}` : 'Desktop Client', 'Kapple Music desktop client', false));
 
         const row = document.createElement('div');
         row.style.cssText = 'padding:10px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;';

@@ -266,12 +266,25 @@ sheet.replaceSync(`
   #kapple-sidebar-floating-nav {
     display: none;
     position: fixed;
-    top: 14px;
-    left: 16px;
+    top: 12px;
+    left: 14px;
     z-index: 99999;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
-    -webkit-app-region: no-drag;
+    padding: 3px 6px;
+    background: rgba(20, 20, 22, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    -webkit-app-region: no-drag !important;
+    pointer-events: auto !important;
+  }
+  #kapple-sidebar-floating-nav button,
+  #kapple-sidebar-floating-nav .kapple-nav-btn {
+    -webkit-app-region: no-drag !important;
+    pointer-events: auto !important;
   }
   body.kapple-sidebar-collapsed #kapple-sidebar-floating-nav {
     display: flex !important;

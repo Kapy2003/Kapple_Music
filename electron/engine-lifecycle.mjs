@@ -58,7 +58,7 @@ export async function recoverOrphanEngine({ lockPath, binary, dataDir, port, log
         ? isOwnedOrphanWindows(pid, binary, port, query)
         : isOwnedOrphan(pid, binary, dataDir, port));
     if (!(await owned())) return;
-    log(`[Adam] Stopping orphan engine (pid ${pid})`);
+    log(`[Kapple Music] Stopping orphan engine (pid ${pid})`);
     // Windows has no SIGTERM: Node maps any signal to TerminateProcess.
     try { process.kill(pid, 'SIGTERM'); } catch { return; }
     for (let i = 0; i < 20; i++) {
@@ -95,7 +95,7 @@ export function createEngineLifecycle({ prepare, spawn, onOutput = () => {}, onS
     const restart = (startedAt) => {
         if (quitting() || restartTimer) return;
         backoff = Date.now() - startedAt > 30_000 ? restartDelay : Math.min(backoff * 2, 30_000);
-        log(`[Adam] Restarting engine in ${backoff} ms`);
+        log(`[Kapple Music] Restarting engine in ${backoff} ms`);
         restartTimer = setTimeout(() => {
             restartTimer = null;
             if (!quitting()) void start();
@@ -123,10 +123,10 @@ export function createEngineLifecycle({ prepare, spawn, onOutput = () => {}, onS
                 // endless series of retry dialogs. Runtime exits still restart.
                 proc.once('error', error => { onError(error); finish(false); });
                 proc.once('exit', (code, signal) => {
-                    log(`[Adam] Engine exited (code ${code}, signal ${signal})`);
+                    log(`[Kapple Music] Engine exited (code ${code}, signal ${signal})`);
                     finish();
                 });
-                proc.once('spawn', () => log(`[Adam] Engine started (pid ${proc.pid})`));
+                proc.once('spawn', () => log(`[Kapple Music] Engine started (pid ${proc.pid})`));
                 proc.stdout?.on('data', onOutput);
                 proc.stderr?.on('data', onStderr);
             } catch (error) { onError(error); }

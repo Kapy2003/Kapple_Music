@@ -76,6 +76,13 @@ const IS_APPLE = location.protocol === 'https:' &&
 // Signal that the app UI is ready to show (called from world 0 after DOM is populated).
 contextBridge.exposeInMainWorld('kappleReady', () => ipcRenderer.send('app:ui-ready'));
 
+const IS_OFFLINE = location.protocol === 'file:' && location.pathname.endsWith('offline.html');
+if (IS_OFFLINE) {
+    contextBridge.exposeInMainWorld('offlineBridge', {
+        getDownloads: () => ipcRenderer.invoke('downloads:list'),
+    });
+}
+
 // The bridge reaches prefs, files and the engine; expose it only to the page the
 // injected bundles run on, never to whatever origin the window navigates to.
 if (IS_APPLE_MUSIC) {

@@ -162,6 +162,7 @@ if (IS_APPLE_MUSIC) {
     updaterCheck:      (force) => ipcRenderer.invoke('updater:check', force),
     updaterApply:      (url)   => ipcRenderer.invoke('updater:apply', url),
     onUpdateAvailable: (cb)    => ipcRenderer.on('updater:available', (_, info) => cb(info)),
+    onUpdateStatus:    (cb)    => ipcRenderer.on('updater:status', (_, status) => cb(status)),
     };
     contextBridge.exposeInMainWorld('kappleBridge', bridge);
 }

@@ -12,7 +12,7 @@ process.stderr.on('error', (e) => { if (!['EPIPE', 'EIO'].includes(e.code)) thro
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import { readFileSync, existsSync, statSync, readFileSync as readFile, writeFileSync, mkdirSync, unlinkSync, createWriteStream, createReadStream, readdirSync, cpSync } from 'fs';
+import { readFileSync, existsSync, statSync, readFileSync as readFile, writeFileSync, mkdirSync, unlinkSync, createWriteStream, createReadStream, readdirSync, cpSync, renameSync, chmodSync } from 'fs';
 import { readFile as readFileAsync } from 'fs/promises';
 import os from 'os';
 import { isatty } from 'tty';
@@ -32,7 +32,7 @@ import { gnomeWallpaperPath } from './wallpaper.mjs';
 import https from 'https';
 import { autoAuthenticate } from './drm-autoauth.mjs';
 import { cleanBlur, cleanGlassOpacity, sidebarOpacityControl, artNavAlpha } from './src/engine/sidebar-glass.js';
-import { checkAppUpdate, applyAppImageUpdate } from './updater.mjs';
+import { checkAppUpdate, downloadAsset } from './updater.mjs';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1405,17 +1405,10 @@ function createWindow() {
         if (offlineShown && win.webContents.getURL().startsWith('file:')) {
             win.webContents.insertCSS('html, body { background: #000 !important; }').catch(() => { });
         }
-        setTimeout(async () => {
-            try {
-                const info = await checkAppUpdate({
-                    currentVersion: app.getVersion(),
-                    netFetch: electronNet.fetch.bind(electronNet),
-                    force: false,
-                });
-                if (info?.hasUpdate && win && !win.isDestroyed()) {
-                    win.webContents.send('updater:available', info);
-                }
-            } catch (_) {}
+        setTimeout(() => {
+            if (win && !win.isDestroyed()) {
+                startBackgroundUpdate(win, false);
+            }
         }, 5000);
     });
 
@@ -1822,38 +1815,152 @@ ipcMain.on('app:version', (event) => {
     event.returnValue = app.getVersion();
 });
 ipcMain.handle('app:version', () => app.getVersion());
-ipcMain.handle('updater:check', async (_, force) => {
-    return checkAppUpdate({
+let _updaterState = {
+    status: 'idle', // 'idle' | 'checking' | 'downloading' | 'ready' | 'error' | 'dev-available'
+    info: null,
+    percent: 0,
+    readyUpdate: null,
+};
+
+async function startBackgroundUpdate(targetWin, force = false) {
+    if (_updaterState.status === 'downloading') {
+        return _updaterState;
+    }
+    if (_updaterState.status === 'ready' && !force) {
+        if (targetWin && !targetWin.isDestroyed()) {
+            targetWin.webContents.send('updater:available', { ..._updaterState.info, ready: true });
+        }
+        return _updaterState;
+    }
+    _updaterState.status = 'checking';
+    const info = await checkAppUpdate({
         currentVersion: app.getVersion(),
         netFetch: electronNet.fetch.bind(electronNet),
-        force: Boolean(force),
+        force,
     });
-});
-ipcMain.handle('updater:apply', async (_, assetUrl) => {
-    const update = await checkAppUpdate({
-        currentVersion: app.getVersion(),
-        netFetch: electronNet.fetch.bind(electronNet),
-    });
-    const targetUrl = assetUrl || update?.assetUrl;
-    if (process.env.APPIMAGE && targetUrl) {
-        try {
-            const res = await applyAppImageUpdate({
-                assetUrl: targetUrl,
-                netFetch: electronNet.fetch.bind(electronNet),
-            });
-            if (res.ok) {
-                console.log(`[Kapple Music Updater] AppImage updated in-place to ${res.path}, relaunching...`);
-                app.relaunch({ execPath: res.path });
-                app.exit(0);
-                return res;
-            }
-        } catch (err) {
-            console.error('[Kapple Music Updater] In-place update failed, falling back to release page:', err);
+    _updaterState.info = info;
+    if (!info?.hasUpdate) {
+        _updaterState.status = 'idle';
+        return _updaterState;
+    }
+
+    if (info.isDev) {
+        _updaterState.status = 'dev-available';
+        if (targetWin && !targetWin.isDestroyed()) {
+            targetWin.webContents.send('updater:available', { ...info, isDev: true });
+        }
+        return _updaterState;
+    }
+
+    if (!info.assetUrl) {
+        _updaterState.status = 'error';
+        return _updaterState;
+    }
+
+    _updaterState.status = 'downloading';
+    _updaterState.percent = 0;
+    if (targetWin && !targetWin.isDestroyed()) {
+        targetWin.webContents.send('updater:status', { status: 'downloading', version: info.latestVersion, percent: 0 });
+    }
+
+    const tmpDir = os.tmpdir();
+    const stagingPath = info.isAppImage
+        ? `${process.env.APPIMAGE}.update-${Date.now()}`
+        : path.join(tmpDir, `kapple-update-${info.latestVersion}-${Date.now()}.run`);
+
+    try {
+        console.log(`[Kapple Music Updater] Downloading v${info.latestVersion} update in background to ${stagingPath}...`);
+        await downloadAsset({
+            assetUrl: info.assetUrl,
+            targetPath: stagingPath,
+            netFetch: electronNet.fetch.bind(electronNet),
+            onProgress: ({ downloaded, total }) => {
+                const pct = total > 0 ? Math.round((downloaded / total) * 100) : 0;
+                _updaterState.percent = pct;
+                if (targetWin && !targetWin.isDestroyed()) {
+                    targetWin.webContents.send('updater:status', { status: 'downloading', version: info.latestVersion, percent: pct });
+                }
+            },
+        });
+
+        _updaterState.status = 'ready';
+        _updaterState.readyUpdate = {
+            version: info.latestVersion,
+            path: stagingPath,
+            mode: info.installMode,
+        };
+        console.log(`[Kapple Music Updater] Update v${info.latestVersion} downloaded and ready.`);
+
+        if (targetWin && !targetWin.isDestroyed()) {
+            targetWin.webContents.send('updater:status', { status: 'ready', version: info.latestVersion });
+            targetWin.webContents.send('updater:available', { ...info, ready: true });
+        }
+    } catch (err) {
+        _updaterState.status = 'error';
+        _updaterState.error = err.message;
+        console.error('[Kapple Music Updater] Background download failed:', err);
+    }
+    return _updaterState;
+}
+
+async function applyUpdate() {
+    if (_updaterState.readyUpdate) {
+        const { path: updatePath, mode } = _updaterState.readyUpdate;
+        if (mode === 'appimage' && process.env.APPIMAGE) {
+            renameSync(updatePath, process.env.APPIMAGE);
+            chmodSync(process.env.APPIMAGE, 0o755);
+            console.log(`[Kapple Music Updater] AppImage updated in-place to ${process.env.APPIMAGE}, relaunching...`);
+            app.relaunch({ execPath: process.env.APPIMAGE });
+            app.exit(0);
+            return { ok: true, relaunched: true };
+        } else if (mode === 'installed') {
+            console.log(`[Kapple Music Updater] Applying installed package update via ${updatePath}, relaunching...`);
+            const script = `tail --pid=${process.pid} -f /dev/null 2>/dev/null || sleep 1; "${updatePath}" --force --no-lossless >/dev/null 2>&1; rm -f "${updatePath}"; "${process.execPath}" &`;
+            spawn('bash', ['-c', script], { detached: true, stdio: 'ignore' }).unref();
+            app.exit(0);
+            return { ok: true, relaunched: true };
         }
     }
-    const url = update?.releaseUrl || targetUrl || 'https://github.com/Kapy2003/Kapple_Music/releases/latest';
+    const url = _updaterState.info?.releaseUrl || 'https://github.com/Kapy2003/Kapple_Music/releases/latest';
     shell.openExternal(url);
     return { ok: true, external: true };
+}
+
+ipcMain.handle('updater:check', async (_, force) => {
+    if (_updaterState.status === 'ready') {
+        return {
+            hasUpdate: true,
+            ready: true,
+            latestVersion: _updaterState.readyUpdate.version,
+            status: 'ready',
+            isAppImage: _updaterState.info?.isAppImage,
+            isInstalled: _updaterState.info?.isInstalled,
+            isDev: _updaterState.info?.isDev,
+        };
+    }
+    if (_updaterState.status === 'downloading') {
+        return {
+            hasUpdate: true,
+            downloading: true,
+            latestVersion: _updaterState.info?.latestVersion,
+            percent: _updaterState.percent,
+            status: 'downloading',
+            isAppImage: _updaterState.info?.isAppImage,
+            isInstalled: _updaterState.info?.isInstalled,
+            isDev: _updaterState.info?.isDev,
+        };
+    }
+    await startBackgroundUpdate(win, Boolean(force));
+    return {
+        ..._updaterState.info,
+        status: _updaterState.status,
+        ready: _updaterState.status === 'ready',
+        downloading: _updaterState.status === 'downloading',
+        percent: _updaterState.percent,
+    };
+});
+ipcMain.handle('updater:apply', async () => {
+    return applyUpdate();
 });
 const _VALID_PREF_KEYS = new Set(['persistLimitMB', 'persistTTLDays', 'prewarmLimitMB']);
 ipcMain.on('pref:set', (_, k, v) => {
@@ -2876,35 +2983,28 @@ function createTray() {
         { label: (miniWin && !miniWin.isDestroyed()) ? 'Hide Mini Player' : 'Mini Player', click: toggleMiniPlayer },
         { type: 'separator' },
         {
-            label: 'Check for Updates…',
+            label: _updaterState.status === 'ready'
+                ? `Restart to Apply Update (v${_updaterState.readyUpdate.version})`
+                : 'Check for Updates…',
             click: async () => {
-                try {
-                    const info = await checkAppUpdate({
-                        currentVersion: app.getVersion(),
-                        netFetch: electronNet.fetch.bind(electronNet),
-                        force: true,
-                    });
-                    if (info?.hasUpdate && win && !win.isDestroyed()) {
-                        win.webContents.send('updater:available', info);
-                        if (!win.isVisible()) { win.show(); win.focus(); }
-                    } else if (info?.error) {
-                        dialog.showMessageBox(win, {
-                            type: 'warning',
-                            title: 'Update Check Failed',
-                            message: `Could not check for updates: ${info.error}`,
-                        });
-                    } else {
-                        dialog.showMessageBox(win, {
-                            type: 'info',
-                            title: 'Up to Date',
-                            message: `Kapple Music v${app.getVersion()} is the latest version.`,
-                        });
-                    }
-                } catch (e) {
+                if (_updaterState.status === 'ready') {
+                    applyUpdate();
+                    return;
+                }
+                const st = await startBackgroundUpdate(win, true);
+                if (st?.ready) {
+                    applyUpdate();
+                } else if (st?.status === 'downloading') {
                     dialog.showMessageBox(win, {
-                        type: 'error',
-                        title: 'Update Check Error',
-                        message: e.message || String(e),
+                        type: 'info',
+                        title: 'Downloading Update',
+                        message: `Kapple Music v${st.info?.latestVersion} is downloading in the background. It will be ready to apply shortly.`,
+                    });
+                } else if (!st?.info?.hasUpdate) {
+                    dialog.showMessageBox(win, {
+                        type: 'info',
+                        title: 'Up to Date',
+                        message: `Kapple Music v${app.getVersion()} is the latest version.`,
                     });
                 }
             },

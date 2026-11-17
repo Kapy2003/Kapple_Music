@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isNewerVersion, checkAppUpdate, applyAppImageUpdate } from '../updater.mjs';
+import { isNewerVersion, checkAppUpdate, applyAppImageUpdate, detectInstallMode, downloadAsset } from '../updater.mjs';
 import { writeFileSync, mkdirSync, rmSync, existsSync, statSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -131,4 +131,61 @@ test('applyAppImageUpdate returns not-appimage when running unpacked or outside 
     });
     assert.equal(res.ok, false);
     assert.equal(res.reason, 'not-appimage');
+});
+
+test('detectInstallMode correctly classifies appimage, installed and dev modes', () => {
+    assert.equal(detectInstallMode({ envAppImage: '/tmp/test.AppImage' }).mode, 'appimage');
+
+    const tmpDir = path.join(os.tmpdir(), `kapple-detect-test-${Date.now()}`);
+    mkdirSync(path.join(tmpDir, 'resources'), { recursive: true });
+    writeFileSync(path.join(tmpDir, 'resources', 'BUILD_INFO'), 'version=1.0.0\n');
+    const fakeExe = path.join(tmpDir, 'kapple-music');
+    writeFileSync(fakeExe, '');
+
+    try {
+        assert.equal(detectInstallMode({ envAppImage: '', execPath: fakeExe }).mode, 'installed');
+        assert.equal(detectInstallMode({ envAppImage: '', execPath: '/dev/null/nowhere' }).mode, 'dev');
+    } finally {
+        if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true, force: true });
+    }
+});
+
+test('downloadAsset reports progress and marks file executable', async () => {
+    const tmpDir = path.join(os.tmpdir(), `kapple-download-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    const targetPath = path.join(tmpDir, 'downloaded.bin');
+    const payload = 'hello downloaded update';
+
+    const mockFetch = async () => ({
+        ok: true,
+        headers: new Map([['content-length', String(payload.length)]]),
+        body: new ReadableStream({
+            start(controller) {
+                controller.enqueue(new TextEncoder().encode(payload));
+                controller.close();
+            },
+        }),
+    });
+
+    let progressCalls = 0;
+    try {
+        const res = await downloadAsset({
+            assetUrl: 'https://example.com/file',
+            targetPath,
+            netFetch: mockFetch,
+            onProgress: ({ downloaded, total }) => {
+                progressCalls++;
+                assert.equal(total, payload.length);
+                assert.ok(downloaded > 0);
+            },
+        });
+
+        assert.equal(res.ok, true);
+        assert.equal(readFileSync(targetPath, 'utf8'), payload);
+        assert.ok(progressCalls > 0);
+        const mode = statSync(targetPath).mode;
+        assert.ok((mode & 0o111) !== 0, 'file must be executable');
+    } finally {
+        if (existsSync(tmpDir)) rmSync(tmpDir, { recursive: true, force: true });
+    }
 });

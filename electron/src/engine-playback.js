@@ -6148,11 +6148,15 @@ function _showUpdateToast(text, actionLabel, onAction) {
 
 window.kappleBridge?.onUpdateAvailable?.((info) => {
     if (!info?.hasUpdate) return;
-    const isAppImage = info.isAppImage;
-    const actionText = isAppImage ? 'Update & Restart' : 'View Release';
-    _showUpdateToast(`Kapple Music v${info.latestVersion} is available`, actionText, () => {
-        window.kappleBridge?.updaterApply?.(info.assetUrl);
-    });
+    if (info.ready) {
+        _showUpdateToast(`Kapple Music v${info.latestVersion} is ready to install`, 'Restart to Apply', () => {
+            window.kappleBridge?.updaterApply?.();
+        });
+    } else if (info.isDev) {
+        _showUpdateToast(`Kapple Music v${info.latestVersion} available on GitHub`, 'View Release', () => {
+            window.kappleBridge?.updaterApply?.();
+        });
+    }
 });
 
 // ── Love / Favorite (bidirectional with MPRIS rating) ─────────────────────────
@@ -11011,21 +11015,58 @@ window.kappleGetQueueInfo = function () {
         const msg = document.createElement('span');
         msg.style.cssText = FF + 'font-size:11px;color:rgba(255,255,255,0.4);flex:1;';
 
+        function renderStatus(st) {
+            if (st?.ready) {
+                msg.textContent = `v${st.latestVersion || st.version} is downloaded and ready to apply.`;
+                btn.textContent = 'Restart to Apply';
+                btn.disabled = false;
+                btn.onclick = () => {
+                    btn.disabled = true;
+                    btn.textContent = 'Restarting…';
+                    window.kappleBridge?.updaterApply?.();
+                };
+            } else if (st?.downloading || st?.status === 'downloading') {
+                msg.textContent = `Downloading v${st.latestVersion || st.version} in background (${st.percent || 0}%)…`;
+                btn.textContent = 'Downloading…';
+                btn.disabled = true;
+            } else if (st?.isDev && st?.hasUpdate) {
+                msg.textContent = `New release v${st.latestVersion} available on GitHub.`;
+                btn.textContent = 'View Release';
+                btn.disabled = false;
+                btn.onclick = () => window.kappleBridge?.updaterApply?.();
+            } else if (st?.hasUpdate) {
+                msg.textContent = `New release v${st.latestVersion} available. Downloading in background…`;
+                btn.textContent = 'Downloading…';
+                btn.disabled = true;
+            }
+        }
+
+        window.kappleBridge?.onUpdateStatus?.(st => renderStatus(st));
+        window.kappleBridge?.updaterCheck?.(false).then(st => {
+            if (st?.ready || st?.downloading) renderStatus(st);
+        }).catch(() => {});
+
         btn.onclick = async () => {
             btn.disabled = true;
             btn.textContent = 'Checking…';
             msg.textContent = 'Checking GitHub releases…';
             try {
                 const info = await window.kappleBridge?.updaterCheck?.(true);
-                if (info?.hasUpdate) {
-                    msg.textContent = `New release v${info.latestVersion} available!`;
-                    btn.textContent = info.isAppImage ? 'Update & Restart' : 'Download';
-                    btn.disabled = false;
-                    btn.onclick = () => {
+                if (info?.ready) {
+                    renderStatus(info);
+                } else if (info?.downloading || info?.status === 'downloading') {
+                    renderStatus(info);
+                } else if (info?.hasUpdate) {
+                    if (info.isDev) {
+                        msg.textContent = `New release v${info.latestVersion} available on GitHub.`;
+                        btn.textContent = 'View Release';
+                        btn.disabled = false;
+                        btn.onclick = () => window.kappleBridge?.updaterApply?.();
+                    } else {
+                        msg.textContent = `New release v${info.latestVersion} found! Downloading in background…`;
+                        btn.textContent = 'Downloading…';
                         btn.disabled = true;
-                        btn.textContent = 'Updating…';
-                        window.kappleBridge?.updaterApply?.(info.assetUrl);
-                    };
+                    }
                 } else if (info?.error) {
                     msg.textContent = `Check failed: ${info.error}`;
                     btn.textContent = 'Check for Updates';

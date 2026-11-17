@@ -909,6 +909,9 @@ function _findInNavStack(stack, cursor, href) {
         if (document.body && (!floatingNav.isConnected || !document.getElementById('kapple-sidebar-floating-nav'))) {
             document.body.appendChild(floatingNav);
         }
+        if (document.adoptedStyleSheets && !document.adoptedStyleSheets.includes(sheet)) {
+            document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+        }
         const collapsed = document.body ? document.body.classList.contains('kapple-sidebar-collapsed') : false;
         _syncSidebarDOM(collapsed);
         checkFullscreenState();

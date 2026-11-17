@@ -3,6 +3,37 @@
 All notable changes to Kapple Music, from the first release. The format follows Keep a
 Changelog, and releases are numbered MAJOR.MINOR.PATCH.
 
+## [1.1.7] - 2026-11-17
+
+### Added
+- **Updates**: added "Check for Updates…" directly into the system tray / taskbar context menu with native dialog feedback.
+- **Settings**: promoted the Updates section with current client version and update check button to the top of the Settings dialog.
+
+### Fixed
+- **UI & Navigation**: fixed floating sidebar expander disappearing when collapsing the sidebar; enforced direct inline styling and JS display management in `_syncSidebarDOM`.
+- **Fullscreen & Takeover**: eliminated false fullscreen triggers in `checkFullscreenState`; properly hides the floating navigation in active full-window lyrics mode and video takeover while preserving visibility during normal browsing.
+- **Wayland / KDE Transparency**: restricted window transparency to compositors providing native blur-behind (Hyprland and KDE X11), preventing completely transparent window voids on KDE Wayland.
+- **Preload**: resolved synchronous application version retrieval via IPC to prevent module load failures on startup.
+
+## [1.1.6] - 2026-11-17
+
+### Added
+- **Updater**: added native zero-dependency in-place OTA updater via GitHub Releases for AppImage builds.
+- **Miniplayer**: added floating miniplayer toggle button to collapsed sidebar navigation.
+
+### Security
+- **Dependencies**: updated Electron to v43.8.10 with security fixes (including CVE-2026-2212).
+
+## [1.1.5] - 2026-11-17
+
+### Added
+- **Playback**: added offline player fallback page (`offline.html`) when network connectivity is lost, with offline playback controls.
+- **Audio**: wired Dolby Atmos capabilities detection and requests.
+
+### Fixed
+- **Branding**: replaced leftover legacy strings and log statements with Kapple Music branding.
+- **UI**: initial floating navigation bar integration for collapsed sidebar mode.
+
 ## [1.1.4] - 2026-11-09
 
 ### Fixed

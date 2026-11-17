@@ -157,7 +157,7 @@ if (IS_APPLE_MUSIC) {
     onOpenUrl:        (cb)    => ipcRenderer.on('kapple:open', (_, intent) => cb(intent)),
     // OTA updater
     appVersion:        (() => {
-        try { return ipcRenderer.sendSync('app:version') || '1.1.6'; } catch (_) { return '1.1.6'; }
+        try { return ipcRenderer.sendSync('app:version') || '1.1.7'; } catch (_) { return '1.1.7'; }
     })(),
     updaterCheck:      (force) => ipcRenderer.invoke('updater:check', force),
     updaterApply:      (url)   => ipcRenderer.invoke('updater:apply', url),

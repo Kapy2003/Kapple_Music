@@ -41,6 +41,8 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 - **AAC streaming** — dedicated MSE pipeline for AAC with accurate seek
 - **In-process DRM** — FairPlay runs inside the engine, with no helper process or local sockets
 - **Clean mode switching** — moving between lossless, AAC and music video stops the previous player first, so tracks never overlap
+- **Dolby Atmos** — spatial audio capability detection and session routing
+- **Offline player fallback** — standalone offline player page (`offline.html`) when network connectivity is lost
 - **Music Videos** — full MV playback with resolution selector (480p → 1080p), subtitles, fullscreen, and fast fragment-level seeking; H.264-preferred to avoid HEVC decode issues on Linux
 - **Audio quality badge** — shows codec, bit depth, and sample rate right in the player bar; click for full stream details
 
@@ -57,7 +59,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 - **Album art theming** — album and playlist pages take their colours from the artwork, and follow the playing track
 - Save and share your own theme presets (export/import JSON)
 - Adjustable blur strength and sidebar opacity sliders
-- Collapsible sidebar with centered main content and smooth transition
+- Collapsible sidebar & floating nav — collapse the sidebar anytime (Ctrl+S); a floating glass navigation pill provides quick sidebar toggle, back/forward history navigation, and miniplayer access without cluttering full-screen lyrics or video takeovers
 - Light and dark mode support
 
 <div align="center">
@@ -67,15 +69,15 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 <details open>
 <summary><b>Compositor &amp; blur details</b></summary>
 
-- Native `blur-behind` on KDE X11 (KWin) and KDE Wayland — no screen-share dialog
-- Hyprland wallpaper blur via `hyprpaper` / `swww`
-- Wallpaper blur on GNOME (read from desktop settings), with glass effect across Linux desktops
+- Native `blur-behind` on Hyprland (via `hyprpaper` / `swww`) and KDE X11 (KWin)
+- Solid dark background on KDE Wayland / GNOME to eliminate compositor transparency voids
 - Software blur fallback on X11 and Sway
 - Automatically switches to software blur if the GPU crashes
 
 </details>
 
 ### System Integration
+- **In-place OTA Updater** — zero-dependency automatic update checks via GitHub Releases; check and update with a single click from the Settings dialog or the taskbar/tray menu
 - **MPRIS2** — play/pause, next/prev, seek, shuffle, and volume via D-Bus (works with KDE, GNOME shell, Waybar, etc.)
 
 <div align="center">
@@ -83,7 +85,7 @@ An Apple Music desktop client for Linux — lossless audio (ALAC up to 192kHz), 
 </div>
 
 - **Media keys** — hardware play/pause, next, and previous keys work even when the window is in the background (includes Bluetooth AVRCP)
-- **System tray** — minimize to tray; playback controls in the right-click menu
+- **System tray** — minimize to tray; playback controls and update checking in the right-click menu
 - **Mini player** — compact always-on-top now-playing window with track progress, volume control, favorite toggle, and quality badge
 - **Discord Rich Presence**, **Last.fm** and **ListenBrainz** scrobbling
 - **Wayland + X11** — tested on Hyprland, KDE Plasma, GNOME, and Sway

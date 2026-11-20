@@ -97,6 +97,34 @@ func TestPatchAlacFragmentWithoutMoofIsANoOp(t *testing.T) {
 	}
 }
 
+// When tfdt is missing, patchAlacFragment must insert exactly one tfdt before
+// the first trun, never duplicating it across multiple truns.
+func TestPatchAlacFragmentInsertsSingleTfdtWhenNil(t *testing.T) {
+	frag := alacLikeFragment(t, 11, 16, 4096)
+	frag.Moof.Traf.Tfdt = nil
+	var filtered []mp4.Box
+	for _, child := range frag.Moof.Traf.Children {
+		if child.Type() != "tfdt" {
+			filtered = append(filtered, child)
+		}
+	}
+	frag.Moof.Traf.Children = filtered
+
+	patchAlacFragment(frag, 500)
+	if frag.Moof.Traf.Tfdt == nil {
+		t.Fatal("tfdt was not inserted")
+	}
+	var tfdtCount int
+	for _, child := range frag.Moof.Traf.Children {
+		if child.Type() == "tfdt" {
+			tfdtCount++
+		}
+	}
+	if tfdtCount != 1 {
+		t.Fatalf("tfdtCount = %d, want exactly 1", tfdtCount)
+	}
+}
+
 func TestPatchMoovDuration(t *testing.T) {
 	init := mp4.CreateEmptyInit()
 	init.AddEmptyTrack(44100, "audio", "en")

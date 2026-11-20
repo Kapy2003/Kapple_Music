@@ -485,11 +485,16 @@ func patchAlacFragment(frag *mp4.Fragment, accumulatedTfdt uint64) uint64 {
 		tfdt.Version = 1
 		traf.Tfdt = tfdt
 		var newChildren []mp4.Box
+		inserted := false
 		for _, child := range traf.Children {
-			if child.Type() == "trun" {
+			if !inserted && child.Type() == "trun" {
 				newChildren = append(newChildren, tfdt)
+				inserted = true
 			}
 			newChildren = append(newChildren, child)
+		}
+		if !inserted {
+			newChildren = append(newChildren, tfdt)
 		}
 		traf.Children = newChildren
 	}
@@ -806,7 +811,8 @@ func (s *cbcsSkipSource) streamAttemptSkip(ctx context.Context, w io.Writer) err
 		}
 		// Patch decode times only after decrypting: growing tfdt changes the moof
 		// size, and GetFullSamples locates sample data by the original offsets.
-		accumulatedTfdt = patchAlacFragment(frag, accumulatedTfdt)
+		// Sequence numbers start at 0 so VLC's mp4 demuxer tracks without discontinuity.
+		accumulatedTfdt = patchAlacFragmentSeq(frag, i-s.startFrag, accumulatedTfdt)
 		dc.recordUse()
 
 		if err := frag.Encode(outBuf); err != nil {
